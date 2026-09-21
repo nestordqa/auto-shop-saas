@@ -1,0 +1,18 @@
+import type { MetadataRoute } from "next";
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "TorkeOS · Gestión de Taller",
+    short_name: "TorkeOS",
+    description: "Gestión móvil de órdenes, diagnósticos y presupuestos para talleres mecánicos.",
+    start_url: "/",
+    display: "standalone",
+    background_color: "#f5f5f4",
+    theme_color: "#171a1f",
+    orientation: "portrait-primary",
+    icons: [
+      { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+  };
+}

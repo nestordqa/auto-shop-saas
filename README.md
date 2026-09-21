@@ -1,37 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TorkeOS
 
-## Getting Started
+PWA SaaS multitenant para talleres mecánicos, construida con Next.js 16, TypeScript, Tailwind CSS 4 y Supabase.
 
-First, run the development server:
+## Inicio local
 
 ```bash
+npm install
+copy .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Sin variables de Supabase, la aplicación entra en modo demostración. Rutas disponibles:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `/dashboard/client`: seguimiento y presupuesto del cliente.
+- `/dashboard/mechanic`: diagnóstico progresivo sin precios.
+- `/dashboard/owner`: tarifación, presupuesto y WhatsApp.
+- `/dashboard/admin`: visión global de talleres.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Supabase
 
-## Learn More
+1. Crea un proyecto y completa `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` y `SUPABASE_SECRET_KEY`.
+2. Ejecuta en orden las migraciones de `supabase/migrations/` mediante Supabase CLI o SQL Editor.
+3. Crea el primer admin con Admin API y `app_metadata.role = "admin"`.
+4. Crea owners y mechanics desde una función de servidor confiable usando Admin API. Nunca expongas `SUPABASE_SECRET_KEY` al navegador ni uses el prefijo `NEXT_PUBLIC_` para esa variable.
 
-To learn more about Next.js, take a look at the following resources:
+El rol del trigger se obtiene de `raw_app_meta_data`, que solo debe escribir un backend privilegiado. El registro público siempre cae en `client`. RLS aísla datos por taller y los triggers bloquean cambios de rol, precios por mecánicos, totales manuales y transiciones inválidas.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Estructura
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```text
+src/
+  app/
+    dashboard/
+      admin/       # layout protegido: admin
+      owner/       # layout protegido: garage_owner
+      mechanic/    # layout protegido: mechanic
+      client/      # layout protegido: client
+    login/
+    manifest.ts
+  components/
+    auth/
+    dashboard/
+    layout/
+    orders/
+  lib/
+    auth/           # autorización server-side
+    supabase/       # clientes browser/server y sesión Proxy
+    whatsapp.ts
+  types/
+supabase/
+  migrations/
+```
 
-## Deploy on Vercel
+Los layouts son una barrera de navegación, no la única defensa. Toda mutación futura debe volver a verificar sesión y rol en su Server Action; PostgreSQL RLS conserva la barrera final.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Calidad
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# auto-shop-saas
+```bash
+npm run lint
+npx tsc --noEmit
+npm run build
+```
+
+
+##USERS
+
+-- ndqa96@gmail.com Valen1501* ADMIN
+-- pruebita@gmail.com Prueba123456* OWNER
+-- tren@gmail.com Tren123456* MECHANIC
+-- prueba_cliente@gmail.com Prueba123456*
+
+
+TALLER ALEGRIA:
+ADMIN: ndqa96@gmail.com Valen1501*
+DUEÑO DE TALLER: taller-alegria@gmail.com Taller123456*
+MECANICO TALLER: mecanico1@gmail.com Mecanico123456*
+CLIENTE TALLER cliente-taller@gmail.com Cliente123456*
+
+

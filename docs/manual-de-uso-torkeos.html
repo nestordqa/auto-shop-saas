@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manual de uso | TorkeOS</title>
+  <style>
+    @page { size: A4; margin: 16mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #171a1f; font: 10.5pt/1.48 Arial, sans-serif; }
+    h1, h2, h3 { margin: 0; line-height: 1.15; }
+    h1 { font-size: 30pt; }
+    h2 { margin-top: 22px; padding-bottom: 6px; border-bottom: 2px solid #ef3f26; font-size: 18pt; }
+    h3 { margin-top: 16px; font-size: 12.5pt; }
+    p { margin: 7px 0; }
+    ul, ol { margin: 7px 0 10px; padding-left: 22px; }
+    li { margin: 3px 0; }
+    code { padding: 1px 4px; border-radius: 3px; background: #eee; font-family: Consolas, monospace; }
+    .cover { min-height: 235mm; display: flex; flex-direction: column; justify-content: space-between; padding: 24mm 16mm; color: white; background: #171a1f; page-break-after: always; }
+    .brand { display: flex; align-items: center; gap: 14px; font-size: 20pt; font-weight: 700; }
+    .mark { display: grid; width: 48px; height: 48px; place-items: center; border-radius: 6px; background: #ef3f26; font-size: 25px; }
+    .eyebrow { color: #ff765f; font-weight: 700; text-transform: uppercase; }
+    .lead { max-width: 125mm; margin-top: 14px; color: #ddd; font-size: 14pt; }
+    .meta { color: #aaa; }
+    .callout { margin: 12px 0; padding: 12px 14px; border-left: 4px solid #ef3f26; background: #f5f5f4; }
+    .success { border-color: #16834c; background: #eaf8ef; }
+    table { width: 100%; margin: 12px 0; border-collapse: collapse; page-break-inside: avoid; }
+    th, td { padding: 7px 8px; border: 1px solid #d6d3d1; text-align: left; vertical-align: top; }
+    th { background: #171a1f; color: white; }
+    tr:nth-child(even) td { background: #fafaf9; }
+    .status { display: grid; grid-template-columns: 1fr 20px 1fr; gap: 4px; align-items: center; margin: 12px 0; }
+    .status span { padding: 7px; border: 1px solid #d6d3d1; border-radius: 4px; text-align: center; font-weight: 700; }
+    .status b { text-align: center; color: #ef3f26; }
+    .page-break { page-break-before: always; }
+    .small { font-size: 9pt; color: #57534e; }
+    a { color: #c52e1b; }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <div class="brand"><span class="mark">⌕</span> TorkeOS</div>
+    <div><p class="eyebrow">Manual operativo</p><h1>Guía de uso y permisos</h1><p class="lead">Administración multitenant de talleres, citas, diagnósticos, presupuestos y seguimiento del cliente.</p></div>
+    <p class="meta">Edición: septiembre de 2026 · Entorno de ejemplo: Taller Alegría</p>
+  </section>
+
+  <h2>1. Acceso y cuentas</h2>
+  <p>Desde <code>/login</code>, cada usuario accede con su correo y contraseña. Todos los campos de contraseña incluyen el botón para mostrar u ocultar el valor.</p>
+  <p>Los clientes pueden usar <strong>Crea tu cuenta</strong>. El registro público siempre crea una cuenta con rol <code>client</code>; nunca permite escoger un rol privilegiado.</p>
+  <div class="callout"><strong>Seguridad:</strong> admin, owner y mecánico son creados desde flujos internos autorizados. Las credenciales no deben publicarse en manuales ni repositorios.</div>
+
+  <h2>2. URL pública de cada taller</h2>
+  <p>Cada taller posee un identificador URL único. Para Taller Alegría, la agenda pública es:</p>
+  <div class="callout success"><strong>Ruta:</strong> <code>/taller-alegria</code><br><strong>Local:</strong> <code>http://localhost:3000/taller-alegria</code><br><strong>Producción:</strong> <code>https://tu-dominio.com/taller-alegria</code></div>
+  <p>Cuando un cliente entra por esta URL:</p>
+  <ol>
+    <li>El nombre del taller se aplica al navbar y al contexto del cliente.</li>
+    <li>El menú <strong>Citas</strong> vuelve a la agenda de ese taller.</li>
+    <li>El taller queda seleccionado y bloqueado en el formulario.</li>
+    <li>La cita se guarda con el <code>garage_id</code> correspondiente a Taller Alegría.</li>
+    <li>Si no inició sesión, puede registrarse o acceder y luego regresar a la misma URL.</li>
+  </ol>
+
+  <h2>3. Roles y permisos</h2>
+  <table>
+    <thead><tr><th>Acción</th><th>Admin</th><th>Owner</th><th>Mecánico</th><th>Cliente</th></tr></thead>
+    <tbody>
+      <tr><td>Administrar talleres y catálogo</td><td>Sí, global</td><td>No</td><td>No</td><td>No</td></tr>
+      <tr><td>Consultar usuarios</td><td>Sí, global</td><td>Solo operación de su taller</td><td>No</td><td>Su perfil</td></tr>
+      <tr><td>Crear/asignar órdenes</td><td>Supervisión</td><td>Sí, en su taller</td><td>No</td><td>Crea cita para su vehículo</td></tr>
+      <tr><td>Registrar diagnóstico</td><td>No operativo</td><td>Sí, en su taller</td><td>Sí, si está asignado</td><td>Solo lectura</td></tr>
+      <tr><td>Definir precios y publicar presupuesto</td><td>Autorizado</td><td>Sí, en su taller</td><td>No</td><td>No</td></tr>
+      <tr><td>Aceptar/rechazar presupuesto</td><td>Autorizado</td><td>Sí, en su taller</td><td>No</td><td>Sí, si el vehículo es suyo</td></tr>
+      <tr><td>Avanzar reparación y entrega</td><td>Autorizado</td><td>Sí, en su taller</td><td>Solo ingreso y diagnóstico</td><td>No</td></tr>
+    </tbody>
+  </table>
+  <p class="small">Todas las mutaciones vuelven a comprobar sesión, rol, propiedad del taller o vehículo y estado vigente. El cliente administrativo se usa únicamente en servidor después de autorizar.</p>
+
+  <div class="page-break"></div>
+  <h2>4. Flujo de una orden</h2>
+  <div class="status"><span>Cita agendada</span><b>→</b><span>Vehículo ingresado</span><span>Diagnóstico listo</span><b>→</b><span>Presupuesto publicado</span><span>En reparación</span><b>→</b><span>Listo para entregar</span><span>Presupuesto rechazado</span><b>↺</b><span>Nueva revisión</span></div>
+  <h3>Cita</h3>
+  <p>El cliente registra un vehículo, selecciona una fecha y consulta slots de 30 minutos entre 08:00 y 18:00. Los horarios ocupados no aparecen. Una restricción única en base de datos evita reservas simultáneas del mismo slot.</p>
+  <h3>Ingreso y diagnóstico</h3>
+  <p>El owner confirma el ingreso. El owner del taller o el mecánico asignado pueden agregar, completar y eliminar hallazgos mientras la orden esté en estado <strong>Vehículo ingresado</strong>. El mecánico no ve ni define precios.</p>
+  <h3>Presupuesto</h3>
+  <p>El owner asigna un precio a cada hallazgo, indica si incluye repuestos y publica el presupuesto. El total se calcula automáticamente. El estado cambia a <strong>Presupuesto publicado</strong>.</p>
+  <h3>Decisión</h3>
+  <p>El cliente dueño del vehículo o el owner del taller pueden aceptar o rechazar:</p>
+  <ul><li><strong>Aceptado:</strong> la orden pasa a <strong>En reparación</strong>.</li><li><strong>Rechazado:</strong> pasa a <strong>Presupuesto rechazado</strong> y puede revisarse/publicarse nuevamente.</li></ul>
+  <h3>WhatsApp</h3>
+  <p>La vista previa incluye cliente, taller, vehículo, orden, estado, detalle de diagnósticos, precio por ítem, repuestos y total. Los teléfonos venezolanos eliminan ceros iniciales e incorporan el prefijo <code>58</code> sin duplicarlo.</p>
+
+  <h2>5. Uso por perfil</h2>
+  <h3>Administrador</h3>
+  <ol><li>Consulta métricas globales de talleres, usuarios y órdenes abiertas.</li><li>Crea talleres y owners.</li><li>Gestiona el catálogo de marcas y modelos.</li><li>Consulta facturación y actividad global.</li></ol>
+  <h3>Owner</h3>
+  <ol><li>Administra órdenes, agenda y equipo.</li><li>Asigna o reasigna mecánicos activos de su taller.</li><li>Puede ejecutar el diagnóstico o dejarlo al mecánico asignado.</li><li>Publica y decide presupuestos; avanza reparación y entrega.</li></ol>
+  <h3>Mecánico</h3>
+  <ol><li>Ve únicamente órdenes asignadas a su perfil.</li><li>Consulta agenda y registra hallazgos.</li><li>Avanza hasta <strong>Diagnóstico listo</strong>.</li><li>No consulta precios ni publica presupuestos.</li></ol>
+  <h3>Cliente</h3>
+  <ol><li>Registra sus vehículos.</li><li>Agenda en el taller seleccionado por URL o desde su panel.</li><li>Consulta todas sus citas y su estado.</li><li>Revisa diagnósticos y precios; acepta o rechaza presupuestos activos.</li></ol>
+
+  <h2>6. Operación recomendada</h2>
+  <ul><li>Compartir con cada taller su URL pública, por ejemplo <code>/taller-alegria</code>.</li><li>No compartir credenciales por documentos públicos.</li><li>Aplicar las migraciones de Supabase en orden antes de desplegar.</li><li>Mantener <code>SUPABASE_SECRET_KEY</code> exclusivamente en el servidor.</li><li>Comprobar que Supabase Realtime incluya órdenes, diagnósticos y presupuestos.</li></ul>
+</body>
+</html>
