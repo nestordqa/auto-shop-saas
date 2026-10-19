@@ -1,11 +1,14 @@
 import {
   CalendarDays,
   CheckCircle2,
+  ChevronRight,
   Clock3,
+  HeartPulse,
   MapPin,
   XCircle,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 import { AppointmentBooking } from "@/components/client/appointment-booking";
 import { ClientVehicleCreate } from "@/components/client/client-vehicle-create";
@@ -43,7 +46,7 @@ export function ClientVehicleDashboard({
   customerName: string;
   budgets: ClientBudget[];
   garages: { id: string; label: string }[];
-  vehicles: { id: string; label: string }[];
+  vehicles: { id: string; label: string; openOrderLabel?: string | null }[];
   brands: { id: string; name: string }[];
   models: { id: string; brandId: string; name: string }[];
   defaultGarageId?: string;
@@ -146,12 +149,17 @@ export function ClientVehicleDashboard({
         {vehicles.length > 0 && (
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {vehicles.map((vehicle) => (
-              <div
+              <Link
                 key={vehicle.id}
-                className="rounded-lg border border-stone-200 bg-white p-4 font-bold"
+                href={`/dashboard/client/vehicles/${vehicle.id}`}
+                className="group flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-white p-4 font-bold transition hover:border-[#ef3f26]/50 hover:shadow-sm"
               >
-                {vehicle.label}
-              </div>
+                <span className="min-w-0">
+                  {vehicle.label}
+                  <span className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-[#d9341d]"><HeartPulse size={14} /> Ver historia del vehículo</span>
+                </span>
+                <ChevronRight size={20} className="shrink-0 text-stone-400 transition group-hover:translate-x-1" />
+              </Link>
             ))}
           </div>
         )}

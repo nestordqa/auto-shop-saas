@@ -7,7 +7,7 @@ import { useState } from "react";
 import type { OrderStatus } from "@/types/domain";
 
 const actions: Partial<Record<OrderStatus, { next: OrderStatus; label: string }>> = {
-  por_ingresar: { next: "ingresado", label: "Confirmar ingreso del vehículo" },
+  diagnosticado: { next: "ingresado", label: "Reabrir diagnóstico" },
   presupuesto_rechazado: { next: "diagnosticado", label: "Reabrir presupuesto" },
   en_reparacion: { next: "listo_para_entregar", label: "Marcar listo para entregar" },
   listo_para_entregar: { next: "entregado", label: "Registrar vehículo entregado" },

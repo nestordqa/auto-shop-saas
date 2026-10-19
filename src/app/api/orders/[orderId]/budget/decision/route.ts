@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { getStaffGarage } from "@/lib/auth/garage-staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -27,9 +28,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
 
   const role = user.app_metadata.role;
   let authorized = role === "admin";
-  if (role === "garage_owner") {
-    const { data: garage } = await admin.from("garages").select("id").eq("id", order.garage_id).eq("owner_id", user.id).maybeSingle();
-    authorized = Boolean(garage);
+  if (role === "garage_owner" || role === "garage_manager") {
+    authorized = (await getStaffGarage(admin, user))?.garageId === order.garage_id;
   } else if (role === "client") {
     const { data: vehicle } = await admin.from("vehicles").select("id").eq("id", order.vehicle_id).eq("user_id", user.id).maybeSingle();
     authorized = Boolean(vehicle);

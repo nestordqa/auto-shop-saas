@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { getStaffGarage } from "@/lib/auth/garage-staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { ORDER_STATUSES } from "@/types/domain";
@@ -29,14 +30,23 @@ export async function PATCH(
   if (!order) return NextResponse.json({ error: "La orden no existe." }, { status: 404 });
 
   let authorized = role === "admin";
-  if (role === "garage_owner") {
-    const { data: garage } = await admin.from("garages").select("id").eq("id", order.garage_id).eq("owner_id", user.id).maybeSingle();
-    authorized = Boolean(garage);
+  if (role === "garage_owner" || role === "garage_manager") {
+    authorized = (await getStaffGarage(admin, user))?.garageId === order.garage_id;
   } else if (role === "mechanic") {
     const { data: mechanic } = await admin.from("mechanics").select("id").eq("profile_id", user.id).eq("id", order.mechanic_id).eq("is_active", true).maybeSingle();
     authorized = Boolean(mechanic);
   }
   if (!authorized) return NextResponse.json({ error: "La orden no está asignada a tu perfil o taller." }, { status: 403 });
+
+  if (parsed.data.status === "ingresado") {
+    const { data: intake } = await admin.from("vehicle_intakes").select("id").eq("order_id", orderId).maybeSingle();
+    if (!intake) return NextResponse.json({ error: "Completa el formato de ingreso antes de recibir el vehículo." }, { status: 409 });
+  }
+
+  if (parsed.data.status === "diagnosticado") {
+    const { count } = await admin.from("diagnostics").select("id", { count: "exact", head: true }).eq("order_id", orderId);
+    if (!count) return NextResponse.json({ error: "Registra al menos un hallazgo antes de finalizar el diagnóstico." }, { status: 409 });
+  }
 
   const { error } = await admin
     .from("orders")

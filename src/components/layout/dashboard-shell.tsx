@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Activity,
   CalendarDays,
   CarFront,
   ClipboardList,
@@ -17,11 +18,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { LiveRefresh } from "@/components/layout/live-refresh";
 import type { AppRole } from "@/types/domain";
 
 const roleLabels: Record<AppRole, string> = {
   admin: "Administración",
   garage_owner: "Mi taller",
+  garage_manager: "Encargado del taller",
   mechanic: "Área técnica",
   client: "Mis vehículos",
 };
@@ -38,7 +41,14 @@ const navigation = {
     { label: "Órdenes", href: "/dashboard/owner/orders", icon: ClipboardList },
     { label: "Agenda", href: "/dashboard/owner/agenda", icon: CalendarDays },
     { label: "Equipo", href: "/dashboard/owner/team", icon: Users },
+    { label: "Durabilidad", href: "/dashboard/owner/insights", icon: Activity },
     { label: "Facturación", href: "/dashboard/owner/billing", icon: ReceiptText },
+  ],
+  garage_manager: [
+    { label: "Órdenes", href: "/dashboard/owner/orders", icon: ClipboardList },
+    { label: "Agenda", href: "/dashboard/owner/agenda", icon: CalendarDays },
+    { label: "Equipo", href: "/dashboard/owner/team", icon: Users },
+    { label: "Durabilidad", href: "/dashboard/owner/insights", icon: Activity },
   ],
   mechanic: [
     { label: "Diagnóstico", href: "/dashboard/mechanic", icon: ClipboardList },
@@ -90,7 +100,7 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
   return (
     <div className="min-h-dvh bg-stone-100 text-stone-950">
       <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-stone-200 bg-white/95 px-4 backdrop-blur md:hidden">
-        <Link href={`/dashboard/${role === "garage_owner" ? "owner" : role}`} className="flex items-center gap-2 font-bold">
+        <Link href={`/dashboard/${role === "garage_owner" || role === "garage_manager" ? "owner" : role}`} className="flex items-center gap-2 font-bold">
           <span className="grid size-9 place-items-center rounded-md bg-[#ef3f26] text-white"><Wrench size={20} /></span>
           {brandName}
         </Link>
@@ -118,7 +128,7 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
       )}
 
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-stone-800 bg-[#171a1f] p-5 text-white md:flex">
-        <Link href={`/dashboard/${role === "garage_owner" ? "owner" : role}`} className="flex items-center gap-3 text-xl font-bold">
+        <Link href={`/dashboard/${role === "garage_owner" || role === "garage_manager" ? "owner" : role}`} className="flex items-center gap-3 text-xl font-bold">
           <span className="grid size-10 place-items-center rounded-md bg-[#ef3f26]"><Wrench size={22} /></span>
           {brandName}
         </Link>
@@ -144,6 +154,7 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
         </div>
       </aside>
 
+      <LiveRefresh />
       <main className="min-w-0 pb-24 md:ml-64 md:pb-8">{children}</main>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 grid h-20 border-t border-stone-200 bg-white px-2 pb-[env(safe-area-inset-bottom)] md:hidden" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>

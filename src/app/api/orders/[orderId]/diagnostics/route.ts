@@ -4,9 +4,12 @@ import { z } from "zod";
 import { getAuthorizedDiagnosticOrder } from "@/lib/auth/diagnostic-order-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { COMPONENT_KEYS, INTERVENTION_TYPES } from "@/lib/vehicle-systems";
 
 const createDiagnosticSchema = z.object({
   description: z.string().trim().min(3).max(240),
+  component: z.enum(COMPONENT_KEYS).nullish(),
+  interventionType: z.enum(INTERVENTION_TYPES).nullish(),
 });
 
 export async function POST(
@@ -38,9 +41,11 @@ export async function POST(
     .insert({
       order_id: orderId,
       description: parsed.data.description,
+      component: parsed.data.component ?? null,
+      intervention_type: parsed.data.component ? parsed.data.interventionType ?? "reparacion" : null,
       created_by: user.id,
     })
-    .select("id, description, price, is_completed")
+    .select("id, description, price, is_completed, component, intervention_type")
     .single();
 
   if (error) {
@@ -53,6 +58,8 @@ export async function POST(
       description: data.description,
       price: data.price,
       isCompleted: data.is_completed,
+      component: data.component,
+      interventionType: data.intervention_type,
     },
   }, { status: 201 });
 }

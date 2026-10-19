@@ -1,6 +1,7 @@
 import { RotateCcw, Search } from "lucide-react";
 import Link from "next/link";
 
+import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderCreateFlowModal } from "@/components/owner/order-create-flow-modal";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { formatAppointmentDateTime } from "@/lib/appointments";
@@ -9,12 +10,9 @@ import {
   MECHANIC_SPECIALTY_LABELS,
   type MechanicSpecialty,
 } from "@/lib/mechanics";
+import { compareOrdersForWork, getOpenOrdersByVehicle } from "@/lib/order-status";
 import { getOwnerOrders } from "@/lib/owner-orders";
-import {
-  ORDER_STATUSES,
-  ORDER_STATUS_LABELS,
-  type OrderStatus,
-} from "@/types/domain";
+import { ORDER_STATUSES, ORDER_STATUS_LABELS } from "@/types/domain";
 
 const pageSize = 10;
 
@@ -33,6 +31,7 @@ export default async function OwnerOrdersPage({
     { data: clients },
     { data: brands },
     { data: models },
+    openOrders,
   ] = await Promise.all([
     getOwnerOrders(dataClient, garage.id),
     dataClient
@@ -54,6 +53,7 @@ export default async function OwnerOrdersPage({
       .from("vehicle_models")
       .select("id, brand_id, name")
       .eq("is_active", true),
+    getOpenOrdersByVehicle(dataClient),
   ]);
   const optionProfileIds = [
     ...new Set((mechanicRows ?? []).map((mechanic) => mechanic.profile_id)),
@@ -72,11 +72,15 @@ export default async function OwnerOrdersPage({
     name: client.full_name,
     documentId: client.document_id,
   }));
-  const vehicleOptions = (vehicles ?? []).map((vehicle) => ({
-    id: vehicle.id,
-    clientId: vehicle.user_id,
-    label: `${vehicle.brand} ${vehicle.model} ${vehicle.year} · ${vehicle.plate}`,
-  }));
+  const vehicleOptions = (vehicles ?? []).map((vehicle) => {
+    const openStatus = openOrders.get(vehicle.id);
+    return {
+      id: vehicle.id,
+      clientId: vehicle.user_id,
+      label: `${vehicle.brand} ${vehicle.model} ${vehicle.year} · ${vehicle.plate}`,
+      openOrderLabel: openStatus ? ORDER_STATUS_LABELS[openStatus] : null,
+    };
+  });
   const mechanicOptions = (mechanicRows ?? []).map((mechanic) => ({
     id: mechanic.id,
     name: optionProfileById.get(mechanic.profile_id) ?? "Mecánico",
@@ -93,14 +97,16 @@ export default async function OwnerOrdersPage({
     name: String(model.name),
   }));
   const normalizedQuery = q.trim().toLocaleLowerCase("es");
-  const filtered = rows.filter(
-    (order) =>
-      (status === "all" || order.status === status) &&
-      (!normalizedQuery ||
-        `${order.vehicle} ${order.plate} ${order.customer} ${order.mechanic}`
-          .toLocaleLowerCase("es")
-          .includes(normalizedQuery)),
-  );
+  const filtered = rows
+    .filter(
+      (order) =>
+        (status === "all" || order.status === status) &&
+        (!normalizedQuery ||
+          `${order.vehicle} ${order.plate} ${order.customer} ${order.mechanic}`
+            .toLocaleLowerCase("es")
+            .includes(normalizedQuery)),
+    )
+    .sort(compareOrdersForWork);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(
     Math.max(Number.parseInt(page, 10) || 1, 1),
@@ -185,7 +191,7 @@ export default async function OwnerOrdersPage({
             </thead>
             <tbody className="divide-y divide-stone-100">
               {paginated.map((order) => (
-                <tr key={order.id}>
+                <tr key={order.id} className={order.status === "entregado" ? "bg-stone-50/60 text-stone-500" : undefined}>
                   <td className="p-4">
                     <p className="font-bold">{order.vehicle}</p>
                     <p className="text-xs text-stone-500">
@@ -198,7 +204,7 @@ export default async function OwnerOrdersPage({
                   </td>
                   <td className="p-4">{order.mechanic}</td>
                   <td className="p-4">
-                    <StatusBadge status={order.status} />
+                    <OrderStatusBadge status={order.status} />
                   </td>
                   <td className="p-4 text-right">
                     <Link
@@ -233,13 +239,6 @@ export default async function OwnerOrdersPage({
   );
 }
 
-function StatusBadge({ status }: { status: OrderStatus }) {
-  return (
-    <span className="rounded-sm bg-stone-100 px-2 py-1 text-xs font-bold">
-      {ORDER_STATUS_LABELS[status]}
-    </span>
-  );
-}
 function MissingGarage({ email }: { email?: string }) {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">

@@ -11,7 +11,9 @@ export const ORDER_STATUSES = [
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
-export type AppRole = "admin" | "garage_owner" | "mechanic" | "client";
+export type AppRole = "admin" | "garage_owner" | "garage_manager" | "mechanic" | "client";
+
+export type GarageStaffRole = "garage_owner" | "garage_manager";
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   por_ingresar: "Cita agendada",
@@ -29,6 +31,9 @@ export type Diagnostic = {
   description: string;
   price: number | null;
   isCompleted: boolean;
+  component?: string | null;
+  interventionType?: string | null;
+  partBrand?: string | null;
 };
 
 export type Vehicle = {

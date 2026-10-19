@@ -1,6 +1,7 @@
 import { CalendarDays, RotateCcw } from "lucide-react";
 import Link from "next/link";
 
+import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { TablePagination } from "@/components/ui/table-pagination";
 import {
   appointmentDateKey,
@@ -14,7 +15,6 @@ import {
   getMonthOptions,
 } from "@/lib/billing";
 import { getOwnerOrders } from "@/lib/owner-orders";
-import { ORDER_STATUS_LABELS } from "@/types/domain";
 
 const pageSize = 10;
 
@@ -134,7 +134,7 @@ export default async function OwnerAgendaPage({
                   </td>
                   <td className="p-4">{order.customer}</td>
                   <td className="p-4">{order.mechanic}</td>
-                  <td className="p-4">{ORDER_STATUS_LABELS[order.status]}</td>
+                  <td className="p-4"><OrderStatusBadge status={order.status} /></td>
                 </tr>
               ))}
             </tbody>

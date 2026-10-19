@@ -8,7 +8,7 @@ import { aggregateBilling, formatBillingMonth, formatMoney, getBillingCommission
 const pageSize = 10;
 
 export default async function OwnerBillingPage({ searchParams }: { searchParams: Promise<{ month?: string; page?: string }> }) {
-  const { user, garage, dataClient } = await requireOwnerGarage();
+  const { user, garage, dataClient } = await requireOwnerGarage({ ownerOnly: true });
   const { month: requestedMonth, page = "1" } = await searchParams;
 
   if (!garage) return <div className="mx-auto max-w-3xl px-4 py-12"><h1 className="font-display text-3xl font-bold">Taller no asignado</h1><p className="mt-2 text-stone-600">La cuenta {user.email} no coincide con el owner configurado para un taller.</p></div>;

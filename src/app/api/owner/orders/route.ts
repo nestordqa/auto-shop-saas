@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { authorizeStaffRequest } from "@/lib/auth/garage-staff";
+import { getOpenOrderForVehicle, openOrderMessage } from "@/lib/order-status";
 
 const clientSchema = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("existing"), id: z.uuid() }),
@@ -43,15 +43,10 @@ export async function POST(request: Request) {
   const parsed = orderSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Revisa el vehículo y la fecha de la cita." }, { status: 400 });
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Sesión no válida." }, { status: 401 });
-  if (user.app_metadata.role !== "garage_owner") return NextResponse.json({ error: "Acceso restringido." }, { status: 403 });
-
-  const admin = createAdminClient();
-  if (!admin) return NextResponse.json({ error: "La creación de órdenes no está configurada." }, { status: 503 });
-  const { data: garage } = await admin.from("garages").select("id").eq("owner_id", user.id).maybeSingle();
-  if (!garage) return NextResponse.json({ error: "Tu cuenta no tiene un taller asignado." }, { status: 403 });
+  const auth = await authorizeStaffRequest({ unavailable: "La creación de órdenes no está configurada." });
+  if (!auth.ok) return auth.response;
+  const { admin } = auth;
+  const garage = { id: auth.staff.garageId };
 
   const input = parsed.data;
   const [appointmentYear, appointmentMonth, appointmentDay] = input.appointmentDate.split("-").map(Number);
@@ -89,6 +84,8 @@ export async function POST(request: Request) {
       if (createdClient) await admin.auth.admin.deleteUser(clientId);
       return NextResponse.json({ error: "El vehículo no pertenece al cliente seleccionado." }, { status: 400 });
     }
+    const openOrder = await getOpenOrderForVehicle(admin, vehicle.id);
+    if (openOrder) return NextResponse.json({ error: openOrderMessage(openOrder.status) }, { status: 409 });
   } else {
     const { data: brand } = await admin.from("vehicle_brands").select("id").eq("id", input.vehicle.brandId).eq("is_active", true).maybeSingle();
     if (!brand) {
@@ -149,6 +146,10 @@ export async function POST(request: Request) {
   if (error) {
     if (createdClient) await admin.auth.admin.deleteUser(clientId);
     else if (createdVehicle) await admin.from("vehicles").delete().eq("id", vehicleId);
+    if (error.code === "23505") {
+      const openOrder = createdVehicle ? null : await getOpenOrderForVehicle(admin, vehicleId);
+      return NextResponse.json({ error: openOrder ? openOrderMessage(openOrder.status) : "Ese horario ya está reservado en tu taller. Elige otro." }, { status: 409 });
+    }
     return NextResponse.json({ error: "No se pudo crear la orden." }, { status: 400 });
   }
   return NextResponse.json({ orderId: order.id }, { status: 201 });

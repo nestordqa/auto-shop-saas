@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 type Option = { id: string; label: string };
+/** `openOrderLabel` marks a vehicle that already has an order in progress and cannot book another. */
+type VehicleOption = Option & { openOrderLabel?: string | null };
 
 type AppointmentBookingProps = {
   garages: Option[];
-  vehicles: Option[];
+  vehicles: VehicleOption[];
   lockedGarageId?: string;
   defaultGarageId?: string;
 };
@@ -69,7 +71,7 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
     <form onSubmit={submit} className="mt-4 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm">
       <div className="grid gap-4 p-5 md:grid-cols-3">
         {contextGarageId ? <label className="grid gap-2 text-sm font-bold">Taller<input type="hidden" name="garageId" value={contextGarageId} /><select value={contextGarageId} disabled className="min-h-12 rounded-md border border-stone-200 bg-stone-100 px-3 text-stone-800 disabled:opacity-100"><option value={contextGarageId}>{contextGarage?.label ?? "Taller seleccionado"}</option></select></label> : <label className="grid gap-2 text-sm font-bold">Taller<select name="garageId" defaultValue="" className="min-h-12 rounded-md border border-stone-300 bg-white px-3" required><option value="">Seleccionar</option>{garages.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>}
-        <label className="grid gap-2 text-sm font-bold">Vehículo<select name="vehicleId" className="min-h-12 rounded-md border border-stone-300 bg-white px-3" required><option value="">Seleccionar</option>{vehicles.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+        <label className="grid gap-2 text-sm font-bold">Vehículo<select name="vehicleId" className="min-h-12 rounded-md border border-stone-300 bg-white px-3" required><option value="">Seleccionar</option>{vehicles.map((item) => <option key={item.id} value={item.id} disabled={Boolean(item.openOrderLabel)}>{item.label}{item.openOrderLabel ? ` · En servicio: ${item.openOrderLabel}` : ""}</option>)}</select>{vehicles.some((item) => item.openOrderLabel) && <span className="text-xs font-normal text-stone-500">Un vehículo con un servicio en curso podrá agendar de nuevo cuando se entregue.</span>}</label>
         <label className="grid gap-2 text-sm font-bold">Fecha<input name="date" type="date" min={today} className="min-h-12 rounded-md border border-stone-300 px-3" required /></label>
         <button type="button" disabled={loading} onClick={(event) => loadSlots(event.currentTarget.form!)} className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-stone-900 px-5 font-bold text-white disabled:opacity-60 md:col-span-3">{loading ? <LoaderCircle className="animate-spin" size={19} /> : <CalendarSearch size={19} />} Consultar horarios</button>
       </div>

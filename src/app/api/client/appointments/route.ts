@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { appointmentIso } from "@/lib/appointments";
+import { getOpenOrderForVehicle, openOrderMessage } from "@/lib/order-status";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -29,8 +30,13 @@ export async function POST(request: Request) {
     admin.from("vehicles").select("id").eq("id", vehicleId).eq("user_id", user.id).maybeSingle(),
   ]);
   if (!garage || !vehicle) return NextResponse.json({ error: "El taller o vehículo seleccionado no es válido." }, { status: 400 });
+  const openOrder = await getOpenOrderForVehicle(admin, vehicle.id);
+  if (openOrder) return NextResponse.json({ error: openOrderMessage(openOrder.status) }, { status: 409 });
   const { data: order, error } = await admin.from("orders").insert({ garage_id: garage.id, vehicle_id: vehicle.id, mechanic_id: null, appointment_date: appointmentDate }).select("id").single();
-  if (error?.code === "23505") return NextResponse.json({ error: "Ese horario acaba de ser reservado. Selecciona otro." }, { status: 409 });
+  if (error?.code === "23505") {
+    const raced = await getOpenOrderForVehicle(admin, vehicle.id);
+    return NextResponse.json({ error: raced ? openOrderMessage(raced.status) : "Ese horario acaba de ser reservado. Selecciona otro." }, { status: 409 });
+  }
   if (error || !order) return NextResponse.json({ error: "No se pudo agendar la cita." }, { status: 400 });
   return NextResponse.json({ orderId: order.id }, { status: 201 });
 }

@@ -1,15 +1,19 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, Circle, Flag, Plus, Trash2 } from "lucide-react";
+import { Check, Circle, Flag, LoaderCircle, Plus, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { INTERVENTION_LABELS, INTERVENTION_TYPES, VEHICLE_SYSTEMS, componentLabel, interventionLabel } from "@/lib/vehicle-systems";
 import type { Diagnostic, OrderStatus } from "@/types/domain";
 
 const diagnosticSchema = z.object({
   description: z.string().trim().min(3, "Describe el hallazgo con al menos 3 caracteres.").max(240),
+  component: z.string(),
+  interventionType: z.enum(INTERVENTION_TYPES),
 });
 
 type DiagnosticInput = z.infer<typeof diagnosticSchema>;
@@ -21,12 +25,14 @@ type MechanicDiagnosticFormProps = {
 };
 
 export function MechanicDiagnosticForm({ orderId, initialStatus, initialDiagnostics }: MechanicDiagnosticFormProps) {
+  const router = useRouter();
   const [diagnostics, setDiagnostics] = useState(initialDiagnostics);
   const [status, setStatus] = useState(initialStatus);
+  const [advancing, setAdvancing] = useState(false);
   const [requestError, setRequestError] = useState<string>();
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<DiagnosticInput>({
     resolver: zodResolver(diagnosticSchema),
-    defaultValues: { description: "" },
+    defaultValues: { description: "", component: "", interventionType: "reemplazo" },
   });
 
   async function addDiagnostic(values: DiagnosticInput) {
@@ -34,7 +40,7 @@ export function MechanicDiagnosticForm({ orderId, initialStatus, initialDiagnost
     const response = await fetch(`/api/orders/${orderId}/diagnostics`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
+      body: JSON.stringify({ ...values, component: values.component || null }),
     });
     const result = await response.json() as { diagnostic?: Diagnostic; error?: string };
     if (!response.ok || !result.diagnostic) {
@@ -42,7 +48,7 @@ export function MechanicDiagnosticForm({ orderId, initialStatus, initialDiagnost
       return;
     }
     setDiagnostics((current) => [...current, result.diagnostic!]);
-    reset();
+    reset({ description: "", component: "", interventionType: values.interventionType });
   }
 
   async function toggleDiagnostic(id: string) {
@@ -73,7 +79,12 @@ export function MechanicDiagnosticForm({ orderId, initialStatus, initialDiagnost
 
   async function advanceOrder() {
     const nextStatus = status === "por_ingresar" ? "ingresado" : "diagnosticado";
+    if (nextStatus === "diagnosticado" && !diagnostics.length) {
+      setRequestError("Registra al menos un hallazgo antes de finalizar el diagnóstico.");
+      return;
+    }
     setRequestError(undefined);
+    setAdvancing(true);
     const response = await fetch(`/api/orders/${orderId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -81,10 +92,13 @@ export function MechanicDiagnosticForm({ orderId, initialStatus, initialDiagnost
     });
     const result = await response.json() as { error?: string; status?: OrderStatus };
     if (!response.ok || !result.status) {
+      setAdvancing(false);
       setRequestError(result.error ?? "No se pudo actualizar la orden.");
       return;
     }
     setStatus(result.status);
+    // The page decides what comes next (budget editor, read-only diagnosis…), so re-render it.
+    router.refresh();
   }
 
   return (
@@ -108,7 +122,10 @@ export function MechanicDiagnosticForm({ orderId, initialStatus, initialDiagnost
             </button>
             <div className="min-w-0 flex-1 pt-1">
               <p className={`wrap-break-word text-sm font-semibold leading-5 ${diagnostic.isCompleted ? "text-stone-500 line-through" : "text-stone-900"}`}>{diagnostic.description}</p>
-              <p className="mt-1 text-xs font-medium text-stone-500">Sin precio asignado</p>
+              <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-medium text-stone-500">
+                {diagnostic.component && <span className="rounded bg-stone-900 px-1.5 py-0.5 font-bold text-white">{componentLabel(diagnostic.component)} · {interventionLabel(diagnostic.interventionType)}</span>}
+                Sin precio asignado
+              </p>
             </div>
             <button type="button" onClick={() => removeDiagnostic(diagnostic.id)} className="grid size-11 shrink-0 place-items-center rounded-md text-stone-400 hover:bg-red-50 hover:text-red-700" aria-label="Eliminar diagnóstico">
               <Trash2 size={20} />
@@ -118,6 +135,26 @@ export function MechanicDiagnosticForm({ orderId, initialStatus, initialDiagnost
       </div>
 
       <form onSubmit={handleSubmit(addDiagnostic)} className="border-t border-stone-200 bg-stone-50 p-4 sm:p-6">
+        <div className="mb-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_200px]">
+          <label className="grid gap-1 text-sm font-bold">
+            Componente
+            <select className="min-h-12 rounded-md border border-stone-300 bg-white px-3 text-base font-normal" {...register("component")}>
+              <option value="">Sin componente específico</option>
+              {VEHICLE_SYSTEMS.map((system) => (
+                <optgroup key={system.key} label={system.label}>
+                  {system.components.map((component) => <option key={component.key} value={component.key}>{component.label}</option>)}
+                </optgroup>
+              ))}
+            </select>
+            <span className="text-xs font-normal text-stone-500">Alimenta la historia clínica del vehículo.</span>
+          </label>
+          <label className="grid content-start gap-1 text-sm font-bold">
+            Intervención
+            <select className="min-h-12 rounded-md border border-stone-300 bg-white px-3 text-base font-normal" {...register("interventionType")}>
+              {INTERVENTION_TYPES.map((type) => <option key={type} value={type}>{INTERVENTION_LABELS[type]}</option>)}
+            </select>
+          </label>
+        </div>
         <label htmlFor="description" className="text-sm font-bold">Nuevo hallazgo</label>
         <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-start">
           <div className="min-w-0 flex-1">
@@ -132,8 +169,8 @@ export function MechanicDiagnosticForm({ orderId, initialStatus, initialDiagnost
       </form>
       {(status === "por_ingresar" || status === "ingresado") && (
         <div className="border-t border-stone-200 p-4 sm:p-6">
-          <button type="button" onClick={advanceOrder} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-stone-900 px-5 font-bold text-white hover:bg-stone-800">
-            <Flag size={19} /> {status === "por_ingresar" ? "Confirmar ingreso del vehículo" : "Finalizar diagnóstico"}
+          <button type="button" disabled={advancing} onClick={advanceOrder} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-stone-900 px-5 font-bold text-white hover:bg-stone-800 disabled:opacity-60">
+            {advancing ? <LoaderCircle className="animate-spin" size={19} /> : <Flag size={19} />} {status === "por_ingresar" ? "Confirmar ingreso del vehículo" : "Finalizar diagnóstico"}
           </button>
         </div>
       )}

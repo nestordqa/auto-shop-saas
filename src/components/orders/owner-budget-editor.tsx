@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
+import { componentLabel } from "@/lib/vehicle-systems";
 import { buildWhatsAppStatusMessage, buildWhatsAppStatusUrl } from "@/lib/whatsapp";
 import { ORDER_STATUS_LABELS, type Diagnostic } from "@/types/domain";
 
@@ -16,6 +17,8 @@ const budgetSchema = z.object({
     id: z.string(),
     description: z.string(),
     price: z.number({ error: "Indica un precio válido." }).min(0, "El precio no puede ser negativo."),
+    partBrand: z.string().trim().max(80),
+    component: z.string().nullable(),
   })),
 });
 
@@ -51,7 +54,7 @@ export function OwnerBudgetEditor({
     resolver: zodResolver(budgetSchema),
     defaultValues: {
       includesParts: initialIncludesParts,
-      diagnostics: initialDiagnostics.map(({ id, description, price }) => ({ id, description, price: price ?? 0 })),
+      diagnostics: initialDiagnostics.map(({ id, description, price, partBrand, component }) => ({ id, description, price: price ?? 0, partBrand: partBrand ?? "", component: component ?? null })),
     },
   });
   const { fields } = useFieldArray({ control, name: "diagnostics" });
@@ -84,7 +87,10 @@ export function OwnerBudgetEditor({
     const response = await fetch(`/api/orders/${orderId}/budget`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
+      body: JSON.stringify({
+        includesParts: input.includesParts,
+        diagnostics: input.diagnostics.map(({ id, price, partBrand }) => ({ id, price, partBrand: partBrand || null })),
+      }),
     });
     const result = await response.json() as { error?: string };
     if (!response.ok) {
@@ -110,6 +116,14 @@ export function OwnerBudgetEditor({
               <div className="min-w-0">
                 <span className="text-xs font-bold text-stone-400">0{index + 1}</span>
                 <p className="mt-1 wrap-break-word text-sm font-semibold leading-5">{field.description}</p>
+                {field.component && <span className="mt-1 inline-block rounded bg-stone-900 px-1.5 py-0.5 text-[11px] font-bold text-white">{componentLabel(field.component)}</span>}
+                <input
+                  aria-label="Marca del repuesto"
+                  placeholder="Marca del repuesto (opcional)"
+                  maxLength={80}
+                  className="mt-2 min-h-10 w-full rounded-md border border-stone-200 px-3 text-sm outline-none focus:border-[#ef3f26]"
+                  {...register(`diagnostics.${index}.partBrand`)}
+                />
               </div>
               <div>
                 <label htmlFor={`diagnostic-${index}`} className="text-xs font-bold text-stone-600">Precio USD</label>

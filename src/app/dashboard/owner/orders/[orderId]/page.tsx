@@ -2,19 +2,25 @@ import { ArrowLeft, CalendarDays, UserRound, Wrench } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { VehicleHistoryPanel } from "@/components/history/vehicle-history-panel";
+import { IntakeSummary } from "@/components/intake/intake-summary";
+import { VehicleIntakeForm } from "@/components/intake/vehicle-intake-form";
 import { BudgetDecisionActions } from "@/components/orders/budget-decision-actions";
 import { MechanicDiagnosticForm } from "@/components/orders/mechanic-diagnostic-form";
+import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OwnerBudgetEditor } from "@/components/orders/owner-budget-editor";
 import { OrderMechanicAssignment } from "@/components/owner/order-mechanic-assignment";
 import { OrderProgressAction } from "@/components/owner/order-progress-action";
 import { formatAppointmentDateTime } from "@/lib/appointments";
 import { requireOwnerGarage } from "@/lib/auth/require-owner-garage";
+import { getOrderIntake } from "@/lib/intake-data";
+import { isStorageConfigured } from "@/lib/storage/intake-photos";
+import { getVehicleHistory } from "@/lib/vehicle-history";
 import {
   MECHANIC_SPECIALTY_LABELS,
   type MechanicSpecialty,
 } from "@/lib/mechanics";
 import {
-  ORDER_STATUS_LABELS,
   type Diagnostic,
   type OrderStatus,
 } from "@/types/domain";
@@ -49,6 +55,8 @@ export default async function OwnerOrderDetailPage({
     { data: budget },
     { data: mechanic },
     { data: activeMechanics },
+    intake,
+    history,
   ] = await Promise.all([
     dataClient
       .from("vehicles")
@@ -57,7 +65,7 @@ export default async function OwnerOrderDetailPage({
       .maybeSingle(),
     dataClient
       .from("diagnostics")
-      .select("id, description, price, is_completed")
+      .select("id, description, price, is_completed, component, intervention_type, part_brand")
       .eq("order_id", order.id)
       .order("created_at"),
     dataClient
@@ -78,6 +86,8 @@ export default async function OwnerOrderDetailPage({
       .eq("garage_id", garage.id)
       .eq("is_active", true)
       .order("created_at"),
+    getOrderIntake(dataClient, order.id),
+    getVehicleHistory(dataClient, order.vehicle_id, { garageId: garage.id }, { excludeOrderId: order.id }),
   ]);
   const profileIds = [
     vehicle?.user_id,
@@ -100,6 +110,9 @@ export default async function OwnerOrderDetailPage({
     description: item.description,
     price: item.price,
     isCompleted: item.is_completed,
+    component: item.component,
+    interventionType: item.intervention_type,
+    partBrand: item.part_brand,
   }));
   const vehicleLabel = vehicle
     ? `${vehicle.brand} ${vehicle.model} ${vehicle.year} · ${vehicle.plate}`
@@ -127,9 +140,9 @@ export default async function OwnerOrderDetailPage({
         <h1 className="mt-2 font-display text-3xl font-bold sm:text-4xl">
           {vehicleLabel}
         </h1>
-        <span className="mt-3 inline-flex rounded-sm bg-stone-900 px-3 py-2 text-sm font-bold text-white">
-          {ORDER_STATUS_LABELS[status]}
-        </span>
+        <div className="mt-3">
+          <OrderStatusBadge status={status} size="lg" />
+        </div>
       </header>
       <section className="my-6 grid gap-3 sm:grid-cols-3">
         <Info
@@ -155,8 +168,25 @@ export default async function OwnerOrderDetailPage({
         disabled={status === "entregado"}
       />
       {status === "por_ingresar" && (
-        <OrderProgressAction orderId={order.id} status={status} />
+        <div className="mt-4">
+          <VehicleIntakeForm
+            orderId={order.id}
+            vehicleLabel={vehicleLabel}
+            customerName={customer?.full_name ?? ""}
+            storageEnabled={isStorageConfigured()}
+          />
+        </div>
       )}
+      {intake && (
+        <IntakeSummary
+          intake={intake}
+          vehicleLabel={vehicleLabel}
+          garageName={garage.name}
+          orderReference={order.id.slice(0, 8).toUpperCase()}
+        />
+      )}
+      <VehicleHistoryPanel history={history} currentMileage={intake?.mileage} />
+      <div className="mt-4" />
       {status === "ingresado" && (
         <div className="mt-4">
           <MechanicDiagnosticForm
@@ -211,10 +241,15 @@ export default async function OwnerOrderDetailPage({
           Esta orden fue completada y el vehículo ya fue entregado.
         </p>
       )}
-      {status === "diagnosticado" && diagnostics.length === 0 && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-800">
-          La orden no tiene ítems de diagnóstico para presupuestar.
-        </p>
+      {status === "diagnosticado" && (
+        <div className="mt-4 grid gap-3">
+          {diagnostics.length === 0 && (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-800">
+              La orden no tiene ítems de diagnóstico para presupuestar. Reabre el diagnóstico para registrar los hallazgos.
+            </p>
+          )}
+          <OrderProgressAction orderId={order.id} status={status} />
+        </div>
       )}
     </div>
   );

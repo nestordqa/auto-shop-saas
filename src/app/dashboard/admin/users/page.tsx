@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { AppRole } from "@/types/domain";
 
-const roleLabels: Record<AppRole, string> = { admin: "Admin", garage_owner: "Owner", mechanic: "Mecánico", client: "Cliente" };
+const roleLabels: Record<AppRole, string> = { admin: "Admin", garage_owner: "Owner", garage_manager: "Encargado", mechanic: "Mecánico", client: "Cliente" };
 const pageSize = 10;
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<{ q?: string; role?: string; page?: string }> }) {

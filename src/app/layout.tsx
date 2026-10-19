@@ -14,6 +14,7 @@ const barlowCondensed = Barlow_Condensed({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://torkeos.com"),
   title: { default: "TorkeOS", template: "%s · TorkeOS" },
   description: "Gestión integral y móvil para talleres mecánicos.",
   applicationName: "TorkeOS",

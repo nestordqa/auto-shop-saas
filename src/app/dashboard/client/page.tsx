@@ -4,7 +4,7 @@ import { ClientVehicleDashboard } from "@/components/dashboard/client-vehicle-da
 import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import type { OrderStatus } from "@/types/domain";
+import { ORDER_STATUS_LABELS, type OrderStatus } from "@/types/domain";
 
 export default async function ClientDashboardPage() {
   const user = await requireRole(["client"]);
@@ -42,5 +42,8 @@ export default async function ClientDashboardPage() {
     }];
   });
 
-  return <ClientVehicleDashboard customerName={user.fullName} budgets={items} garages={(garages ?? []).map((garage) => ({ id: garage.id, label: garage.name }))} vehicles={(vehicles ?? []).map((vehicle) => ({ id: vehicle.id, label: `${vehicle.brand} ${vehicle.model} ${vehicle.year} · ${vehicle.plate}` }))} brands={(brands ?? []).map((brand) => ({ id: brand.id, name: String(brand.name) }))} models={(models ?? []).map((model) => ({ id: model.id, brandId: model.brand_id, name: String(model.name) }))} defaultGarageId={garages?.find((garage) => garage.slug === garageSlug)?.id} />;
+  return <ClientVehicleDashboard customerName={user.fullName} budgets={items} garages={(garages ?? []).map((garage) => ({ id: garage.id, label: garage.name }))} vehicles={(vehicles ?? []).map((vehicle) => {
+    const openStatus = (orders ?? []).find((order) => order.vehicle_id === vehicle.id && order.status !== "entregado")?.status as OrderStatus | undefined;
+    return { id: vehicle.id, label: `${vehicle.brand} ${vehicle.model} ${vehicle.year} · ${vehicle.plate}`, openOrderLabel: openStatus ? ORDER_STATUS_LABELS[openStatus] : null };
+  })} brands={(brands ?? []).map((brand) => ({ id: brand.id, name: String(brand.name) }))} models={(models ?? []).map((model) => ({ id: model.id, brandId: model.brand_id, name: String(model.name) }))} defaultGarageId={garages?.find((garage) => garage.slug === garageSlug)?.id} />;
 }

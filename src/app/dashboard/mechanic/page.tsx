@@ -1,10 +1,12 @@
 import { Search } from "lucide-react";
 import Link from "next/link";
 
+import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { formatAppointmentDateTime } from "@/lib/appointments";
 import { requireMechanic } from "@/lib/auth/require-mechanic";
-import { ORDER_STATUS_LABELS, type OrderStatus } from "@/types/domain";
+import { compareOrdersForWork } from "@/lib/order-status";
+import type { OrderStatus } from "@/types/domain";
 
 const pageSize = 10;
 
@@ -50,7 +52,12 @@ export default async function MechanicDashboardPage({
         .toLocaleLowerCase("es")
         .includes(normalizedQuery)
     );
-  });
+  }).sort((a, b) =>
+    compareOrdersForWork(
+      { status: a.status as OrderStatus, appointmentDate: a.appointment_date },
+      { status: b.status as OrderStatus, appointmentDate: b.appointment_date },
+    ),
+  );
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
   const currentPage = Math.min(
     Math.max(Number.parseInt(page, 10) || 1, 1),
@@ -122,7 +129,7 @@ export default async function MechanicDashboardPage({
                       {formatAppointmentDateTime(order.appointment_date)}
                     </td>
                     <td className="p-4">
-                      {ORDER_STATUS_LABELS[order.status as OrderStatus]}
+                      <OrderStatusBadge status={order.status as OrderStatus} />
                     </td>
                     <td className="p-4 text-right">
                       <Link

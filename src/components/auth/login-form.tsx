@@ -42,10 +42,10 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
 
   return (
     <form onSubmit={handleSubmit(signIn)} className="mt-7 grid gap-4">
-      <div><label htmlFor="email" className="text-sm font-bold">Correo electrónico</label><input id="email" type="email" autoComplete="email" className="mt-2 min-h-12 w-full rounded-md border border-stone-300 px-4 text-base outline-none focus:border-[#ef3f26] focus:ring-2 focus:ring-[#ef3f26]/20" {...register("email")} />{errors.email && <p className="mt-1 text-sm text-red-700">{errors.email.message}</p>}</div>
+      <div><label htmlFor="email" className="text-sm font-bold">Correo electrónico</label><input suppressHydrationWarning id="email" type="email" autoComplete="email" className="mt-2 min-h-12 w-full rounded-md border border-stone-300 px-4 text-base outline-none focus:border-[#ef3f26] focus:ring-2 focus:ring-[#ef3f26]/20" {...register("email")} />{errors.email && <p className="mt-1 text-sm text-red-700">{errors.email.message}</p>}</div>
       <div><label htmlFor="password" className="text-sm font-bold">Contraseña</label><PasswordInput id="password" autoComplete="current-password" className="mt-2 min-h-12 rounded-md border border-stone-300 px-4 text-base outline-none focus:border-[#ef3f26] focus:ring-2 focus:ring-[#ef3f26]/20" {...register("password")} />{errors.password && <p className="mt-1 text-sm text-red-700">{errors.password.message}</p>}</div>
       {serverError && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm font-medium text-red-800">{serverError}</p>}
-      <button disabled={isSubmitting} className="mt-2 flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#ef3f26] px-5 font-bold text-white hover:bg-[#d9341d] disabled:opacity-60">{isSubmitting ? <LoaderCircle className="animate-spin" size={20} /> : <>Entrar <ArrowRight size={20} /></>}</button>
+      <button suppressHydrationWarning disabled={isSubmitting} className="mt-2 flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#ef3f26] px-5 font-bold text-white hover:bg-[#d9341d] disabled:opacity-60">{isSubmitting ? <LoaderCircle className="animate-spin" size={20} /> : <>Entrar <ArrowRight size={20} /></>}</button>
       <p className="text-center text-sm text-stone-600">¿Aún no tienes acceso? <Link href={`/register${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""}`} className="font-bold text-[#d9341d] hover:underline">Crea tu cuenta</Link></p>
     </form>
   );

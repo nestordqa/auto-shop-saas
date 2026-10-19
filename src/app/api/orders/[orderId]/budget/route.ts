@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { getStaffGarage } from "@/lib/auth/garage-staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -9,6 +10,7 @@ const budgetSchema = z.object({
   diagnostics: z.array(z.object({
     id: z.uuid(),
     price: z.number().min(0).max(9999999999.99),
+    partBrand: z.string().trim().max(80).nullish(),
   })).min(1),
 });
 
@@ -30,14 +32,13 @@ export async function PUT(
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "La gestión de presupuestos no está configurada." }, { status: 503 });
   const role = user.app_metadata.role;
-  if (!["admin", "garage_owner"].includes(role)) {
-    return NextResponse.json({ error: "Solo un owner o admin puede guardar presupuestos." }, { status: 403 });
+  if (!["admin", "garage_owner", "garage_manager"].includes(role)) {
+    return NextResponse.json({ error: "Solo el taller o un admin puede guardar presupuestos." }, { status: 403 });
   }
   const { data: order } = await admin.from("orders").select("id, garage_id").eq("id", orderId).maybeSingle();
   if (!order) return NextResponse.json({ error: "La orden no existe." }, { status: 404 });
-  if (role === "garage_owner") {
-    const { data: garage } = await admin.from("garages").select("id").eq("id", order.garage_id).eq("owner_id", user.id).maybeSingle();
-    if (!garage) return NextResponse.json({ error: "La orden no pertenece a tu taller." }, { status: 403 });
+  if (role !== "admin") {
+    if ((await getStaffGarage(admin, user))?.garageId !== order.garage_id) return NextResponse.json({ error: "La orden no pertenece a tu taller." }, { status: 403 });
   }
   const diagnosticIds = parsed.data.diagnostics.map(({ id }) => id);
   const { data: orderDiagnostics } = await admin.from("diagnostics").select("id").eq("order_id", orderId).in("id", diagnosticIds);
@@ -45,8 +46,8 @@ export async function PUT(
     return NextResponse.json({ error: "El presupuesto contiene diagnósticos ajenos a la orden." }, { status: 400 });
   }
 
-  const priceUpdates = await Promise.all(parsed.data.diagnostics.map(({ id, price }) =>
-    admin.from("diagnostics").update({ price }).eq("id", id).eq("order_id", orderId),
+  const priceUpdates = await Promise.all(parsed.data.diagnostics.map(({ id, price, partBrand }) =>
+    admin.from("diagnostics").update({ price, part_brand: partBrand || null }).eq("id", id).eq("order_id", orderId),
   ));
 
   if (priceUpdates.some(({ error }) => error)) {

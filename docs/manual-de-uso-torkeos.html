@@ -40,13 +40,13 @@
   <section class="cover">
     <div class="brand"><span class="mark">⌕</span> TorkeOS</div>
     <div><p class="eyebrow">Manual operativo</p><h1>Guía de uso y permisos</h1><p class="lead">Administración multitenant de talleres, citas, diagnósticos, presupuestos y seguimiento del cliente.</p></div>
-    <p class="meta">Edición: septiembre de 2026 · Entorno de ejemplo: Taller Alegría</p>
+    <p class="meta">Edición: octubre de 2026 · Entorno de ejemplo: Taller Alegría</p>
   </section>
 
   <h2>1. Acceso y cuentas</h2>
   <p>Desde <code>/login</code>, cada usuario accede con su correo y contraseña. Todos los campos de contraseña incluyen el botón para mostrar u ocultar el valor.</p>
   <p>Los clientes pueden usar <strong>Crea tu cuenta</strong>. El registro público siempre crea una cuenta con rol <code>client</code>; nunca permite escoger un rol privilegiado.</p>
-  <div class="callout"><strong>Seguridad:</strong> admin, owner y mecánico son creados desde flujos internos autorizados. Las credenciales no deben publicarse en manuales ni repositorios.</div>
+  <div class="callout"><strong>Seguridad:</strong> admin, owner, encargado y mecánico son creados desde flujos internos autorizados. Las credenciales no deben publicarse en manuales ni repositorios.</div>
 
   <h2>2. URL pública de cada taller</h2>
   <p>Cada taller posee un identificador URL único. Para Taller Alegría, la agenda pública es:</p>
@@ -62,15 +62,20 @@
 
   <h2>3. Roles y permisos</h2>
   <table>
-    <thead><tr><th>Acción</th><th>Admin</th><th>Owner</th><th>Mecánico</th><th>Cliente</th></tr></thead>
+    <thead><tr><th>Acción</th><th>Admin</th><th>Owner</th><th>Encargado</th><th>Mecánico</th><th>Cliente</th></tr></thead>
     <tbody>
-      <tr><td>Administrar talleres y catálogo</td><td>Sí, global</td><td>No</td><td>No</td><td>No</td></tr>
-      <tr><td>Consultar usuarios</td><td>Sí, global</td><td>Solo operación de su taller</td><td>No</td><td>Su perfil</td></tr>
-      <tr><td>Crear/asignar órdenes</td><td>Supervisión</td><td>Sí, en su taller</td><td>No</td><td>Crea cita para su vehículo</td></tr>
-      <tr><td>Registrar diagnóstico</td><td>No operativo</td><td>Sí, en su taller</td><td>Sí, si está asignado</td><td>Solo lectura</td></tr>
-      <tr><td>Definir precios y publicar presupuesto</td><td>Autorizado</td><td>Sí, en su taller</td><td>No</td><td>No</td></tr>
-      <tr><td>Aceptar/rechazar presupuesto</td><td>Autorizado</td><td>Sí, en su taller</td><td>No</td><td>Sí, si el vehículo es suyo</td></tr>
-      <tr><td>Avanzar reparación y entrega</td><td>Autorizado</td><td>Sí, en su taller</td><td>Solo ingreso y diagnóstico</td><td>No</td></tr>
+      <tr><td>Administrar talleres y catálogo</td><td>Sí, global</td><td>No</td><td>No</td><td>No</td><td>No</td></tr>
+      <tr><td>Consultar usuarios</td><td>Sí, global</td><td>Operación de su taller</td><td>Operación de su taller</td><td>No</td><td>Su perfil</td></tr>
+      <tr><td>Crear/asignar órdenes</td><td>Supervisión</td><td>Sí</td><td>Sí</td><td>No</td><td>Crea cita para su vehículo</td></tr>
+      <tr><td>Llenar formato de ingreso</td><td>No operativo</td><td>Sí</td><td>Sí</td><td>Sí, si está asignado</td><td>Firma y consulta</td></tr>
+      <tr><td>Registrar diagnóstico</td><td>No operativo</td><td>Sí</td><td>Sí</td><td>Sí, si está asignado</td><td>Solo lectura</td></tr>
+      <tr><td>Definir precios y publicar presupuesto</td><td>Autorizado</td><td>Sí</td><td>Sí</td><td>No</td><td>No</td></tr>
+      <tr><td>Aceptar/rechazar presupuesto</td><td>Autorizado</td><td>Sí</td><td>Sí</td><td>No</td><td>Sí, si el vehículo es suyo</td></tr>
+      <tr><td>Avanzar reparación y entrega</td><td>Autorizado</td><td>Sí</td><td>Sí</td><td>Solo ingreso y diagnóstico</td><td>No</td></tr>
+      <tr><td>Gestionar mecánicos</td><td>No</td><td>Sí</td><td>Sí</td><td>No</td><td>No</td></tr>
+      <tr><td>Gestionar encargados</td><td>No</td><td>Sí</td><td>No</td><td>No</td><td>No</td></tr>
+      <tr><td>Historia clínica y durabilidad</td><td>No</td><td>Sí</td><td>Sí</td><td>Historia de sus órdenes asignadas</td><td>Historial de sus vehículos</td></tr>
+      <tr><td>Facturación (comisión)</td><td>Global</td><td>Sí</td><td>No</td><td>No</td><td>No</td></tr>
     </tbody>
   </table>
   <p class="small">Todas las mutaciones vuelven a comprobar sesión, rol, propiedad del taller o vehículo y estado vigente. El cliente administrativo se usa únicamente en servidor después de autorizar.</p>
@@ -81,11 +86,12 @@
   <h3>Cita</h3>
   <p>El cliente registra un vehículo, selecciona una fecha y consulta slots de 30 minutos entre 08:00 y 18:00. Los horarios ocupados no aparecen. Una restricción única en base de datos evita reservas simultáneas del mismo slot.</p>
   <h3>Ingreso y diagnóstico</h3>
-  <p>El owner confirma el ingreso. El owner del taller o el mecánico asignado pueden agregar, completar y eliminar hallazgos mientras la orden esté en estado <strong>Vehículo ingresado</strong>. El mecánico no ve ni define precios.</p>
+  <p>El vehículo solo pasa a <strong>Vehículo ingresado</strong> al guardar el <strong>formato de ingreso</strong> (sección 6); la base de datos rechaza el ingreso sin formato. Luego el owner, el encargado o el mecánico asignado agregan, completan y eliminan hallazgos mientras la orden esté en <strong>Vehículo ingresado</strong>.</p>
+  <p>Cada hallazgo puede indicar el <strong>componente</strong> (por ejemplo, bomba de agua) y el tipo de <strong>intervención</strong> (reemplazo, reparación, limpieza, ajuste o revisión). Esos datos alimentan la historia clínica del vehículo. El mecánico no ve ni define precios.</p>
   <h3>Presupuesto</h3>
-  <p>El owner asigna un precio a cada hallazgo, indica si incluye repuestos y publica el presupuesto. El total se calcula automáticamente. El estado cambia a <strong>Presupuesto publicado</strong>.</p>
+  <p>El owner o el encargado asigna un precio a cada hallazgo, puede registrar la <strong>marca del repuesto</strong>, indica si incluye repuestos y publica el presupuesto. El total se calcula automáticamente. El estado cambia a <strong>Presupuesto publicado</strong>.</p>
   <h3>Decisión</h3>
-  <p>El cliente dueño del vehículo o el owner del taller pueden aceptar o rechazar:</p>
+  <p>El cliente dueño del vehículo, el owner o el encargado del taller pueden aceptar o rechazar:</p>
   <ul><li><strong>Aceptado:</strong> la orden pasa a <strong>En reparación</strong>.</li><li><strong>Rechazado:</strong> pasa a <strong>Presupuesto rechazado</strong> y puede revisarse/publicarse nuevamente.</li></ul>
   <h3>WhatsApp</h3>
   <p>La vista previa incluye cliente, taller, vehículo, orden, estado, detalle de diagnósticos, precio por ítem, repuestos y total. Los teléfonos venezolanos eliminan ceros iniciales e incorporan el prefijo <code>58</code> sin duplicarlo.</p>
@@ -94,13 +100,47 @@
   <h3>Administrador</h3>
   <ol><li>Consulta métricas globales de talleres, usuarios y órdenes abiertas.</li><li>Crea talleres y owners.</li><li>Gestiona el catálogo de marcas y modelos.</li><li>Consulta facturación y actividad global.</li></ol>
   <h3>Owner</h3>
-  <ol><li>Administra órdenes, agenda y equipo.</li><li>Asigna o reasigna mecánicos activos de su taller.</li><li>Puede ejecutar el diagnóstico o dejarlo al mecánico asignado.</li><li>Publica y decide presupuestos; avanza reparación y entrega.</li></ol>
+  <ol><li>Administra órdenes, agenda y equipo (mecánicos y encargados).</li><li>Asigna o reasigna mecánicos activos de su taller.</li><li>Puede ejecutar el diagnóstico o dejarlo al mecánico asignado.</li><li>Publica y decide presupuestos; avanza reparación y entrega.</li><li>Consulta la facturación y la durabilidad de repuestos.</li></ol>
+  <h3>Encargado</h3>
+  <ol><li>Empleado de confianza que el owner crea desde <strong>Equipo → Agregar encargado</strong>.</li><li>Opera el taller igual que el owner: órdenes, agenda, formato de ingreso, diagnóstico, presupuestos, decisiones y entregas.</li><li>Puede agregar, activar y desactivar mecánicos.</li><li>No ve la facturación ni puede crear otros encargados. Si el owner lo desactiva, pierde el acceso al taller de inmediato.</li></ol>
   <h3>Mecánico</h3>
-  <ol><li>Ve únicamente órdenes asignadas a su perfil.</li><li>Consulta agenda y registra hallazgos.</li><li>Avanza hasta <strong>Diagnóstico listo</strong>.</li><li>No consulta precios ni publica presupuestos.</li></ol>
+  <ol><li>Ve únicamente órdenes asignadas a su perfil.</li><li>Llena el formato de ingreso, consulta la historia clínica y registra hallazgos con su componente.</li><li>Avanza hasta <strong>Diagnóstico listo</strong>.</li><li>No consulta precios ni publica presupuestos.</li></ol>
   <h3>Cliente</h3>
-  <ol><li>Registra sus vehículos.</li><li>Agenda en el taller seleccionado por URL o desde su panel.</li><li>Consulta todas sus citas y su estado.</li><li>Revisa diagnósticos y precios; acepta o rechaza presupuestos activos.</li></ol>
+  <ol><li>Registra sus vehículos.</li><li>Agenda en el taller seleccionado por URL o desde su panel.</li><li>Consulta todas sus citas y su estado.</li><li>Revisa diagnósticos y precios; acepta o rechaza presupuestos activos.</li><li>Abre cada vehículo en <strong>Mis vehículos</strong> para ver su historial de servicios y los formatos de ingreso firmados.</li></ol>
 
-  <h2>6. Operación recomendada</h2>
-  <ul><li>Compartir con cada taller su URL pública, por ejemplo <code>/taller-alegria</code>.</li><li>No compartir credenciales por documentos públicos.</li><li>Aplicar las migraciones de Supabase en orden antes de desplegar.</li><li>Mantener <code>SUPABASE_SECRET_KEY</code> exclusivamente en el servidor.</li><li>Comprobar que Supabase Realtime incluya órdenes, diagnósticos y presupuestos.</li></ul>
+  <div class="page-break"></div>
+  <h2>6. Formato de ingreso del vehículo</h2>
+  <p>Mientras la orden está en <strong>Cita agendada</strong>, su detalle muestra el formato de ingreso en lugar del botón de ingreso. Es un asistente de cinco pasos pensado para llenarse desde el teléfono junto al cliente:</p>
+  <table>
+    <thead><tr><th>Paso</th><th>Qué se registra</th></tr></thead>
+    <tbody>
+      <tr><td>1. Vehículo</td><td>Kilometraje (obligatorio), nivel de combustible, serial de carrocería (VIN), serial del motor, carnet de circulación, póliza de seguro y la <strong>falla o servicio que solicita el cliente</strong> (obligatorio).</td></tr>
+      <tr><td>2. Accesorios</td><td>Plantilla predeterminada de 28 accesorios (espejos, alfombras, corneta, gato, llave de cruz, caucho de repuesto, extintor, placas, etc.). Todo viene marcado y se desmarca lo que falta.</td></tr>
+      <tr><td>3. Carrocería</td><td>Diagrama del vehículo en cinco vistas (frontal, trasera, superior, lateral izquierdo y derecho). Se elige el tipo de daño (rayón, golpe, abolladura, roto, pintura dañada o pieza faltante) y se toca el punto exacto. Cada daño admite una nota.</td></tr>
+      <tr><td>4. Fotos y notas</td><td>Hasta 12 fotos tomadas con la cámara del teléfono, que se comprimen antes de subir. Observaciones generales (objetos de valor, testigos encendidos, ruidos).</td></tr>
+      <tr><td>5. Entrega</td><td>Resumen, nombre de quien entrega el vehículo y dos firmas con el dedo: la del cliente que entrega y la de quien recibe por el taller.</td></tr>
+    </tbody>
+  </table>
+  <p>Al guardar, el vehículo pasa a <strong>Vehículo ingresado</strong>. El taller, el mecánico asignado y el cliente pueden consultar el formato e imprimirlo o guardarlo como PDF con el botón <strong>Imprimir / PDF</strong>.</p>
+  <div class="callout"><strong>Fotos:</strong> se guardan en el bucket privado <code>intake-photos</code> de Supabase Storage (sección 8).</div>
+
+  <h2>7. Historia clínica y durabilidad</h2>
+  <h3>Historia clínica del vehículo</h3>
+  <p>En el detalle de cada orden, el taller y el mecánico ven las visitas anteriores del vehículo: fecha, kilometraje, falla reportada y trabajos realizados. Se incluyen visitas a otros talleres TorkeOS, sin nombre del taller ni precios.</p>
+  <p>El <strong>mapa por sistema</strong> (enfriamiento, combustible e inyección, encendido, motor, frenos, suspensión y dirección, transmisión, eléctrico y aire acondicionado) muestra para cada componente intervenido hace cuánto tiempo y cuántos kilómetros se trabajó y la marca del repuesto:</p>
+  <ul><li><strong>Verde:</strong> menos de 6 meses. <strong>Ámbar:</strong> entre 6 y 18 meses. <strong>Gris:</strong> más antiguo.</li><li><strong>Sin registro:</strong> componentes del sistema que nunca se han intervenido.</li><li><strong>Pista de diagnóstico:</strong> si un componente se intervino hace menos de 12 meses, sugiere empezar por los componentes del mismo sistema sin registro. Ejemplo: bomba de agua cambiada hace 6 meses y el vehículo recalienta → revisar primero termostato, radiador y electroventilador.</li></ul>
+  <p>Solo cuentan los trabajos con presupuesto aprobado. Para que la historia sea útil, el mecánico debe asignar el componente a cada hallazgo y el taller cargar la marca del repuesto en el presupuesto.</p>
+  <h3>Durabilidad de repuestos</h3>
+  <p>En <strong>Durabilidad</strong> (owner y encargado) se mide el tiempo y los kilómetros entre dos reemplazos del mismo componente en el mismo vehículo, agrupados por marca. También muestra los componentes más intervenidos y las fallas antes de 90 días, útiles para decidir qué marcas comprar.</p>
+
+  <h2>8. Configuración técnica</h2>
+  <h3>Migraciones nuevas</h3>
+  <p>Ejecutar en el SQL Editor de Supabase, en orden y por separado: <code>008_add_garage_manager_role.sql</code>, luego <code>009_managers_intake_history.sql</code> , <code>010_intake_photos_bucket.sql</code>, <code>011_limit_intake_mileage.sql</code> y <code>012_intake_receiver_signature.sql</code>.</p>
+  <h3>Bucket de fotos (Supabase Storage)</h3>
+  <p>La migración <code>010</code> crea el bucket privado <code>intake-photos</code> (máximo 8 MB por foto, JPG, PNG o WebP). No requiere variables nuevas: el servidor usa la misma <code>SUPABASE_SECRET_KEY</code>.</p>
+  <p class="small">El servidor firma una URL de subida por foto y URLs de lectura de 1 hora; el bucket nunca es público y el navegador no tiene acceso directo a él.</p>
+
+  <h2>9. Operación recomendada</h2>
+  <ul><li>Compartir con cada taller su URL pública, por ejemplo <code>/taller-alegria</code>.</li><li>No compartir credenciales por documentos públicos.</li><li>Aplicar las migraciones de Supabase en orden antes de desplegar (la 008 sola, antes de la 009).</li><li>Pedir a los mecánicos que asignen el componente a cada hallazgo: es la base de la historia clínica.</li><li>Mantener <code>SUPABASE_SECRET_KEY</code> exclusivamente en el servidor.</li><li>Comprobar que Supabase Realtime incluya órdenes, diagnósticos y presupuestos.</li></ul>
 </body>
 </html>
