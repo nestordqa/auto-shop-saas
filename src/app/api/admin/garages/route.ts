@@ -93,5 +93,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: garageError.code === "23505" ? "Ese owner ya tiene un taller." : "No se pudo crear el taller." }, { status: 409 });
   }
 
-  return NextResponse.json({ success: true }, { status: 201 });
+  const { data: ownerProfile } = await admin.from("profiles").select("phone").eq("id", ownerId).maybeSingle();
+  return NextResponse.json({ success: true, garage: { name: input.name, slug, ownerPhone: ownerProfile?.phone ?? null } }, { status: 201 });
 }

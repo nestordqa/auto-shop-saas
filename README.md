@@ -93,7 +93,10 @@ npm run build
 TALLER ALEGRIA:
 ADMIN: ndqa96@gmail.com Valen1501*
 DUEÑO DE TALLER: taller-alegria@gmail.com Taller123456*
+ENCARGADO: encargado-taller-alegria@gmail.com encargado123456*
 MECANICO TALLER: mecanico1@gmail.com Mecanico123456*
 CLIENTE TALLER cliente-taller@gmail.com Cliente123456*
 
+tallercito@gmail.com
+Tallercito123456*
 
