@@ -1,0 +1,6 @@
+[build.environment]
+  # NEXT_PUBLIC_* values are inlined into the bundle by design (Supabase URL and
+  # publishable key are meant to be public; RLS protects the data).
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+  # Turbopack's build cache is never deployed.
+  SECRETS_SCAN_OMIT_PATHS = ".netlify/.next/cache/**"
