@@ -391,3 +391,23 @@ html:has(.landing) {
     clip-path: none;
   }
 }
+
+/* ---------- Brand kit ---------- */
+
+/* La tuerca entra "apretándose": gira hasta su −15° y asienta */
+.brand-hero-mark {
+  filter: drop-shadow(0 0 32px rgba(239, 63, 38, 0.45));
+  animation: brand-tighten 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes brand-tighten {
+  from { opacity: 0; transform: rotate(-90deg) scale(0.8); }
+  70% { transform: rotate(6deg) scale(1.02); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-hero-mark {
+    animation: none;
+  }
+}

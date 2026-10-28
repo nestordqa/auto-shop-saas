@@ -1,10 +1,12 @@
 "use client";
 
-import { Menu, Wrench, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import clsx from "clsx";
+
+import { TorkeMark } from "@/components/brand/torke-logo";
 
 const links = [
   { href: "#nosotros", label: "Nosotros" },
@@ -41,10 +43,8 @@ export function LandingHeader({ whatsappUrl }: { whatsappUrl: string }) {
     >
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:h-20 sm:px-8 lg:px-12">
         <Link href="/" className="group flex items-center gap-3" aria-label="TorkeOS, inicio" onClick={() => setOpen(false)}>
-          <span className="grid size-10 place-items-center rounded-md bg-[#ef3f26] transition-transform duration-500 group-hover:rotate-[-25deg]">
-            <Wrench size={21} />
-          </span>
-          <span className="font-display text-2xl font-bold">TorkeOS</span>
+          <TorkeMark className="size-10 transition-transform duration-500 group-hover:rotate-[25deg]" title="" />
+          <span className="font-display text-2xl font-bold uppercase">Torke<span className="text-[#ef3f26]">OS</span></span>
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Navegación principal">

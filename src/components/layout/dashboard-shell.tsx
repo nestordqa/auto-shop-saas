@@ -18,6 +18,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { TorkeMark } from "@/components/brand/torke-logo";
 import { LiveRefresh } from "@/components/layout/live-refresh";
 import type { AppRole } from "@/types/domain";
 
@@ -101,7 +102,7 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
     <div className="min-h-dvh bg-stone-100 text-stone-950">
       <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-stone-200 bg-white/95 px-4 backdrop-blur md:hidden">
         <Link href={`/dashboard/${role === "garage_owner" || role === "garage_manager" ? "owner" : role}`} className="flex items-center gap-2 font-bold">
-          <span className="grid size-9 place-items-center rounded-md bg-[#ef3f26] text-white"><Wrench size={20} /></span>
+          <TorkeMark className="size-9" title="" />
           {brandName}
         </Link>
         <button type="button" onClick={() => setMenuOpen(!menuOpen)} className="grid size-11 place-items-center rounded-md border border-stone-200" aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}>
@@ -129,7 +130,7 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
 
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-stone-800 bg-[#171a1f] p-5 text-white md:flex">
         <Link href={`/dashboard/${role === "garage_owner" || role === "garage_manager" ? "owner" : role}`} className="flex items-center gap-3 text-xl font-bold">
-          <span className="grid size-10 place-items-center rounded-md bg-[#ef3f26]"><Wrench size={22} /></span>
+          <TorkeMark className="size-10" title="" />
           {brandName}
         </Link>
         <p className="mt-8 text-xs font-semibold uppercase text-stone-400">{roleLabels[role]}</p>

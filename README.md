@@ -81,22 +81,6 @@ npx tsc --noEmit
 npm run build
 ```
 
+## Usuarios de prueba
 
-##USERS
-
--- ndqa96@gmail.com Valen1501* ADMIN
--- pruebita@gmail.com Prueba123456* OWNER
--- tren@gmail.com Tren123456* MECHANIC
--- prueba_cliente@gmail.com Prueba123456*
-
-
-TALLER ALEGRIA:
-ADMIN: ndqa96@gmail.com Valen1501*
-DUEÑO DE TALLER: taller-alegria@gmail.com Taller123456*
-ENCARGADO: encargado-taller-alegria@gmail.com encargado123456*
-MECANICO TALLER: mecanico1@gmail.com Mecanico123456*
-CLIENTE TALLER cliente-taller@gmail.com Cliente123456*
-
-tallercito@gmail.com
-Tallercito123456*
-
+Las credenciales de prueba no se versionan. Pídelas al equipo o créalas en tu proyecto de Supabase local.

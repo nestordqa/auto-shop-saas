@@ -1,5 +1,9 @@
 import { ImageResponse } from "next/og";
 
+import { markSvg } from "@/lib/brand";
+
+const mark = `data:image/svg+xml,${encodeURIComponent(markSvg())}`;
+
 export const alt = "TorkeOS · El taller completo, bajo control";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -20,8 +24,11 @@ export default function OpengraphImage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <div style={{ width: 64, height: 64, borderRadius: 12, background: "#ef3f26" }} />
-          <div style={{ fontSize: 44, fontWeight: 700 }}>TorkeOS</div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- ImageResponse solo acepta <img> */}
+          <img src={mark} width={72} height={72} alt="" />
+          <div style={{ display: "flex", fontSize: 48, fontWeight: 800, letterSpacing: 1 }}>
+            TORKE<span style={{ color: "#ef3f26" }}>OS</span>
+          </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 92, fontWeight: 800, lineHeight: 1 }}>El taller completo,</div>

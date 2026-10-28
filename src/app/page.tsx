@@ -30,9 +30,11 @@ import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
+import { TorkeMark } from "@/components/brand/torke-logo";
 import { LandingEffects } from "@/components/landing/landing-effects";
 import { LandingHeader } from "@/components/landing/landing-header";
 import { getBillingCommissionPercent } from "@/lib/billing";
+import { serializeJsonLd, siteUrl } from "@/lib/seo";
 import { ORDER_STATUSES, ORDER_STATUS_LABELS } from "@/types/domain";
 
 const WHATSAPP_NUMBER = "584121385416";
@@ -209,11 +211,14 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "Organization",
-      "@id": "#organization",
+      "@id": `${siteUrl}/#organization`,
       name: "TorkeOS",
+      url: siteUrl,
+      logo: `${siteUrl}/apple-icon.png`,
       email: CONTACT_EMAIL,
       contactPoint: { "@type": "ContactPoint", telephone: `+${WHATSAPP_NUMBER}`, contactType: "sales", availableLanguage: "es" },
     },
+    { "@type": "WebSite", "@id": `${siteUrl}/#website`, url: siteUrl, name: "TorkeOS", inLanguage: "es", publisher: { "@id": `${siteUrl}/#organization` } },
     {
       "@type": "SoftwareApplication",
       name: "TorkeOS",
@@ -221,7 +226,8 @@ const jsonLd = {
       operatingSystem: "Web, Android, iOS",
       description,
       inLanguage: "es",
-      publisher: { "@id": "#organization" },
+      url: siteUrl,
+      publisher: { "@id": `${siteUrl}/#organization` },
       offers: [
         { "@type": "Offer", name: "Clientes", price: "0", priceCurrency: "USD", description: "Cuenta gratuita para dueños de vehículos." },
         {
@@ -314,7 +320,7 @@ export default function HomePage() {
 
   return (
     <div className="landing min-h-dvh overflow-x-clip bg-[#171a1f] text-white">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <LandingEffects />
       <LandingHeader whatsappUrl={WHATSAPP_URL} />
 
@@ -659,12 +665,6 @@ export default function HomePage() {
               </p>
               <div data-reveal="up" style={delay(3)} className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <WhatsAppButton>Escribir por WhatsApp</WhatsAppButton>
-                <a
-                  href={`mailto:${CONTACT_EMAIL}`}
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-white px-5 font-bold text-stone-950 transition hover:bg-stone-100"
-                >
-                  <Mail size={19} /> {CONTACT_EMAIL}
-                </a>
               </div>
             </div>
           </div>
@@ -674,8 +674,8 @@ export default function HomePage() {
       <footer className="border-t border-white/10 px-4 py-10 sm:px-8 lg:px-12">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/" className="flex items-center gap-3" aria-label="TorkeOS, inicio">
-            <span className="grid size-9 place-items-center rounded-md bg-[#ef3f26]"><Wrench size={18} /></span>
-            <span className="font-display text-xl font-bold">TorkeOS</span>
+            <TorkeMark className="size-9" title="" />
+            <span className="font-display text-xl font-bold uppercase">Torke<span className="text-[#ef3f26]">OS</span></span>
           </Link>
           <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-stone-400" aria-label="Enlaces del pie de página">
             <a href="#nosotros" className="hover:text-white">Nosotros</a>
