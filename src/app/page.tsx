@@ -233,6 +233,8 @@ const jsonLd = {
         {
           "@type": "Offer",
           name: "Talleres",
+          price: "0",
+          priceCurrency: "USD",
           description: `Comisión del ${commission}% sobre los presupuestos aceptados por los clientes. Sin cuota fija.`,
         },
       ],

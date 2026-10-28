@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CarFront,
   ClipboardList,
+  FileDown,
   Gauge,
   LogOut,
   Menu,
@@ -21,6 +22,8 @@ import { useEffect, useState } from "react";
 import { TorkeMark } from "@/components/brand/torke-logo";
 import { LiveRefresh } from "@/components/layout/live-refresh";
 import type { AppRole } from "@/types/domain";
+
+const DOCS_HREF = "/docs/torkeos-manual.pdf";
 
 const roleLabels: Record<AppRole, string> = {
   admin: "Administración",
@@ -120,6 +123,9 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
               </Link>
             ))}
           </nav>
+          <a href={DOCS_HREF} download className="mt-2 flex min-h-12 items-center gap-3 rounded-md bg-stone-100 px-4 font-semibold">
+            <FileDown size={20} /> Documentación (PDF)
+          </a>
           <form action="/api/auth/logout" method="post" className="mt-3 border-t border-stone-200 pt-3">
             <button type="submit" className="flex min-h-12 w-full items-center gap-3 rounded-md px-4 font-semibold text-red-700 hover:bg-red-50">
               <LogOut size={20} /> Cerrar sesión
@@ -143,6 +149,9 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
               </Link>
             );
           })}
+          <a href={DOCS_HREF} download className="flex min-h-12 items-center gap-3 rounded-md px-3 font-medium text-stone-300 hover:bg-white/10">
+            <FileDown size={20} /> Documentación
+          </a>
         </nav>
         <div className="mt-auto border-t border-stone-700 pt-4">
           <p className="truncate font-semibold">{userName}</p>

@@ -13,7 +13,7 @@ import Link from "next/link";
 import { AppointmentBooking } from "@/components/client/appointment-booking";
 import { ClientVehicleCreate } from "@/components/client/client-vehicle-create";
 import { BudgetDecisionActions } from "@/components/orders/budget-decision-actions";
-import { formatAppointmentDate } from "@/lib/appointments";
+import { formatAppointmentDate, formatAppointmentDateTime } from "@/lib/appointments";
 import { ORDER_STATUS_LABELS, type OrderStatus } from "@/types/domain";
 
 type ClientBudget = {
@@ -29,6 +29,14 @@ type ClientBudget = {
   diagnostics: { description: string; price: number }[];
 };
 
+type ClientAppointment = {
+  orderId: string;
+  status: OrderStatus;
+  appointmentDate: string;
+  vehicle: string;
+  garageName: string;
+};
+
 const currency = new Intl.NumberFormat("es-VE", {
   style: "currency",
   currency: "USD",
@@ -37,6 +45,7 @@ const currency = new Intl.NumberFormat("es-VE", {
 export function ClientVehicleDashboard({
   customerName,
   budgets,
+  appointments,
   garages,
   vehicles,
   brands,
@@ -45,6 +54,7 @@ export function ClientVehicleDashboard({
 }: {
   customerName: string;
   budgets: ClientBudget[];
+  appointments: ClientAppointment[];
   garages: { id: string; label: string }[];
   vehicles: { id: string; label: string; openOrderLabel?: string | null }[];
   brands: { id: string; name: string }[];
@@ -165,6 +175,45 @@ export function ClientVehicleDashboard({
         )}
       </section>
       <section id="appointments" className="border-t border-stone-200 py-6">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase text-stone-500">Agenda</p>
+            <h2 className="mt-1 font-display text-2xl font-bold">Mis citas</h2>
+          </div>
+          <span className="rounded-md bg-stone-900 px-3 py-2 text-sm font-bold text-white">
+            {appointments.length}
+          </span>
+        </div>
+        <div className="mt-4 grid gap-3">
+          {appointments.map((appointment) => (
+            <article
+              key={appointment.orderId}
+              className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase text-[#d9341d]">
+                  Orden {appointment.orderId.slice(0, 8).toUpperCase()}
+                </p>
+                <h3 className="mt-1 font-bold">{appointment.vehicle}</h3>
+                <p className="mt-1 flex items-center gap-2 text-sm text-stone-600">
+                  <CalendarDays size={16} className="shrink-0" />
+                  {formatAppointmentDateTime(appointment.appointmentDate)} · {appointment.garageName}
+                </p>
+              </div>
+              <span className="w-fit rounded-md bg-stone-100 px-3 py-2 text-sm font-bold text-stone-800">
+                {ORDER_STATUS_LABELS[appointment.status]}
+              </span>
+            </article>
+          ))}
+          {!appointments.length && (
+            <p className="rounded-lg border border-stone-200 bg-white p-6 text-stone-600">
+              Aún no tienes citas agendadas.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section className="border-t border-stone-200 py-6">
         <h2 className="font-display text-2xl font-bold">Nueva cita</h2>
         <p className="mt-2 text-stone-600">
           Elige un horario disponible entre 08:00 y 18:00.

@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>TorkeOS — Manual de uso</title>
+<!--
+  Fuente del PDF descargable desde el menú "Documentación".
+  Regenerar con: npm run docs:pdf  → public/docs/torkeos-manual.pdf
+-->
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: #1c1917; font-size: 11pt; line-height: 1.5; margin: 0; }
+  h1, h2, h3 { font-family: "Segoe UI", Arial, sans-serif; line-height: 1.2; }
+  h2 { font-size: 20pt; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 3px solid #ef3f26; break-after: avoid; }
+  h3 { font-size: 13pt; margin: 22px 0 6px; break-after: avoid; }
+  p, li { margin: 4px 0; }
+  .chapter { break-before: page; }
+  .cover { height: 250mm; display: flex; flex-direction: column; justify-content: center; }
+  .cover .brand { color: #ef3f26; font-weight: 800; letter-spacing: .08em; font-size: 14pt; }
+  .cover h1 { font-size: 40pt; margin: 8px 0; }
+  .cover p { font-size: 13pt; color: #57534e; max-width: 140mm; }
+  .toc { margin-top: 24px; font-size: 11pt; }
+  .toc li { margin: 3px 0; }
+  figure { margin: 10px 0 16px; break-inside: avoid; }
+  figure img { width: 100%; border: 1px solid #d6d3d1; border-radius: 6px; }
+  figcaption { font-size: 9pt; color: #57534e; margin-top: 4px; }
+  .note { background: #fff7ed; border-left: 4px solid #ef3f26; padding: 8px 12px; margin: 10px 0; break-inside: avoid; }
+  .ok { background: #ecfdf5; border-left-color: #059669; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10pt; break-inside: avoid; }
+  th, td { border: 1px solid #d6d3d1; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #f5f5f4; }
+  td.c { text-align: center; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 4px; font-weight: 700; font-size: 9.5pt; }
+  ol.steps > li { margin: 6px 0; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="brand">TORKEOS</div>
+  <h1>Manual de uso</h1>
+  <p>Guía completa de la plataforma para dueños de taller, encargados, mecánicos y clientes: alta del taller, agenda, órdenes de trabajo, diagnósticos, presupuestos, estados del vehículo y facturación.</p>
+  <ol class="toc">
+    <li>Alta del taller en TorkeOS</li>
+    <li>Roles y permisos</li>
+    <li>Estados de una orden (ciclo del vehículo)</li>
+    <li>Guía del cliente</li>
+    <li>Guía del dueño y del encargado</li>
+    <li>Guía del mecánico</li>
+    <li>Facturación y pago a TorkeOS (solo dueño)</li>
+    <li>Preguntas frecuentes</li>
+  </ol>
+</section>
+
+<section class="chapter">
+  <h2>1. Alta del taller en TorkeOS</h2>
+  <p><strong>TorkeOS se encarga de crear el taller en la plataforma.</strong> El dueño no tiene que configurar nada técnico: solo debe enviar al equipo de TorkeOS los siguientes datos:</p>
+  <ul>
+    <li><strong>Dirección exacta</strong> del taller. Si es posible, un <strong>enlace de Google Maps</strong> (es lo ideal: los clientes llegan sin perderse).</li>
+    <li><strong>Razón social o nombre</strong> del taller.</li>
+    <li><strong>Documento</strong> de identificación (RIF / cédula).</li>
+  </ul>
+  <p>Una vez dado de alta, TorkeOS entrega:</p>
+  <ul>
+    <li>El acceso del <strong>dueño</strong> (correo y contraseña).</li>
+    <li>Una <strong>URL única del taller</strong> (por ejemplo <code>torkeos.com/mi-taller</code>) para compartir con los clientes por WhatsApp, redes o en el local. Desde esa URL los clientes acceden a la agenda del taller.</li>
+  </ul>
+  <div class="note"><strong>Importante:</strong> el cliente <strong>debe crear una cuenta</strong> y <strong>registrar el vehículo</strong> con el que desea agendar antes de poder reservar una cita.</div>
+  <p>Después del alta, el dueño crea su propio equipo (encargados y mecánicos) desde el menú <strong>Equipo</strong>.</p>
+</section>
+
+<section class="chapter">
+  <h2>2. Roles y permisos</h2>
+  <p>TorkeOS tiene cuatro roles dentro de cada taller. Cada uno ve solo lo que necesita.</p>
+  <table>
+    <tr><th>Acción</th><th>Dueño</th><th>Encargado</th><th>Mecánico</th><th>Cliente</th></tr>
+    <tr><td>Crear cuenta y registrar sus vehículos</td><td class="c">—</td><td class="c">—</td><td class="c">—</td><td class="c">✔</td></tr>
+    <tr><td>Agendar cita desde la URL del taller</td><td class="c">—</td><td class="c">—</td><td class="c">—</td><td class="c">✔</td></tr>
+    <tr><td>Crear órdenes de trabajo manualmente</td><td class="c">✔</td><td class="c">✔</td><td class="c">✘</td><td class="c">✘</td></tr>
+    <tr><td>Ver órdenes y agenda del taller</td><td class="c">✔</td><td class="c">✔</td><td class="c">Solo asignadas</td><td class="c">Solo las suyas</td></tr>
+    <tr><td>Asignar mecánico a una orden</td><td class="c">✔</td><td class="c">✔</td><td class="c">✘</td><td class="c">✘</td></tr>
+    <tr><td>Formato de ingreso del vehículo</td><td class="c">✔</td><td class="c">✔</td><td class="c">✘</td><td class="c">✘</td></tr>
+    <tr><td>Registrar diagnóstico (hallazgos)</td><td class="c">✔</td><td class="c">✔</td><td class="c">Solo asignados</td><td class="c">✘</td></tr>
+    <tr><td>Hacer y publicar presupuestos (precios)</td><td class="c">✔</td><td class="c">✔</td><td class="c">✘</td><td class="c">✘</td></tr>
+    <tr><td>Aceptar / rechazar presupuesto</td><td class="c">✔</td><td class="c">✔</td><td class="c">✘</td><td class="c">✔</td></tr>
+    <tr><td>Gestionar mecánicos</td><td class="c">✔</td><td class="c">✔</td><td class="c">✘</td><td class="c">✘</td></tr>
+    <tr><td>Gestionar encargados</td><td class="c">✔</td><td class="c">✘</td><td class="c">✘</td><td class="c">✘</td></tr>
+    <tr><td>Durabilidad de repuestos</td><td class="c">✔</td><td class="c">✔</td><td class="c">✘</td><td class="c">✘</td></tr>
+    <tr><td>Facturación: presupuestos aceptados/rechazados y pago a TorkeOS</td><td class="c">✔</td><td class="c">✘</td><td class="c">✘</td><td class="c">✘</td></tr>
+  </table>
+  <div class="note"><strong>Mecánicos:</strong> solo tienen acceso al <strong>diagnóstico de los vehículos que se les asignaron</strong>. No ven precios, presupuestos, otros vehículos ni la facturación.</div>
+  <div class="note"><strong>Presupuestos:</strong> solo dueños y encargados pueden ponerles precio y publicarlos. Los mecánicos únicamente registran el diagnóstico.</div>
+</section>
+
+<section class="chapter">
+  <h2>3. Estados de una orden (ciclo del vehículo)</h2>
+  <p>Cada visita del vehículo al taller es una <strong>orden de trabajo</strong>. La orden avanza por estos estados, y tanto el taller como el cliente ven el estado actualizado en tiempo real.</p>
+  <table>
+    <tr><th>#</th><th>Estado</th><th>Qué significa</th><th>Quién lo cambia</th></tr>
+    <tr><td>1</td><td><span class="pill" style="background:#e0f2fe;color:#075985">Cita agendada</span></td><td>El cliente reservó una cita, o el taller creó la orden manualmente. El vehículo aún no llega.</td><td>Cliente (al agendar) / Dueño o encargado</td></tr>
+    <tr><td>2</td><td><span class="pill" style="background:#e0e7ff;color:#3730a3">Vehículo ingresado</span></td><td>El vehículo llegó y se completó el <strong>formato de ingreso</strong> (kilometraje, combustible, accesorios, daños, fotos y firmas). Sin formato no se puede ingresar.</td><td>Dueño o encargado</td></tr>
+    <tr><td>3</td><td><span class="pill" style="background:#fef3c7;color:#92400e">Diagnóstico listo</span></td><td>Se registraron los hallazgos y se finalizó el diagnóstico (mínimo un hallazgo).</td><td>Mecánico asignado / Dueño o encargado</td></tr>
+    <tr><td>4</td><td><span class="pill" style="background:#ede9fe;color:#5b21b6">Presupuesto publicado</span></td><td>El taller puso precio a cada ítem y publicó el presupuesto. El cliente debe decidir.</td><td>Dueño o encargado</td></tr>
+    <tr><td>5a</td><td><span class="pill" style="background:#ffedd5;color:#9a3412">En reparación</span></td><td>El presupuesto fue <strong>aceptado</strong>. El taller trabaja en el vehículo.</td><td>Cliente (al aceptar)</td></tr>
+    <tr><td>5b</td><td><span class="pill" style="background:#fee2e2;color:#991b1b">Presupuesto rechazado</span></td><td>El cliente <strong>rechazó</strong> el presupuesto.</td><td>Cliente (al rechazar)</td></tr>
+    <tr><td>6</td><td><span class="pill" style="background:#d1fae5;color:#065f46">Listo para entregar</span></td><td>La reparación terminó; el cliente puede retirar el vehículo.</td><td>Dueño o encargado</td></tr>
+    <tr><td>7</td><td><span class="pill" style="background:#f5f5f4;color:#57534e">Vehículo entregado</span></td><td>El vehículo fue retirado. La orden queda cerrada en la historia del vehículo.</td><td>Dueño o encargado</td></tr>
+  </table>
+  <div class="note"><strong>Una orden abierta por vehículo:</strong> mientras un vehículo tenga una orden que no esté en “Vehículo entregado”, no se puede agendar otra cita para ese vehículo. Podrá agendar de nuevo cuando se entregue.</div>
+</section>
+
+<section class="chapter">
+  <h2>4. Guía del cliente</h2>
+  <h3>4.1 Crear cuenta</h3>
+  <p>Desde la URL del taller, el cliente pulsa crear cuenta e ingresa nombre, correo, teléfono, cédula y contraseña.</p>
+  <figure><img src="../../public/images/docs/client/Captura%20de%20pantalla%202026-10-28%20181639.png"><figcaption>Registro del cliente.</figcaption></figure>
+
+  <h3>4.2 Portal del cliente</h3>
+  <p>Al entrar ve sus presupuestos activos (por decidir), el historial de presupuestos decididos, sus vehículos y sus citas.</p>
+  <figure><img src="../../public/images/docs/client/Captura%20de%20pantalla%202026-10-28%20181702.png"><figcaption>Inicio del portal del cliente.</figcaption></figure>
+
+  <h3>4.3 Registrar un vehículo</h3>
+  <p>En <strong>Mis vehículos → Agregar vehículo</strong> elige marca, modelo, año, color y placa, y pulsa <strong>Guardar vehículo</strong>. Es obligatorio para poder agendar.</p>
+  <figure><img src="../../public/images/docs/client/Captura%20de%20pantalla%202026-10-28%20181739.png"><figcaption>Registro de vehículo.</figcaption></figure>
+
+  <h3>4.4 Agendar una cita</h3>
+  <ol class="steps">
+    <li>En <strong>Nueva cita</strong> selecciona el taller, el vehículo y la fecha.</li>
+    <li>Pulsa <strong>Consultar horarios</strong>. Se muestran los horarios libres entre 08:00 y 18:00, cada 30 minutos.</li>
+    <li>Elige un horario y pulsa <strong>Confirmar cita</strong>.</li>
+  </ol>
+  <figure><img src="../../public/images/docs/client/Captura%20de%20pantalla%202026-10-28%20181814.png"><figcaption>Selección de horario.</figcaption></figure>
+  <p>La cita aparece en <strong>Mis citas</strong> con fecha, hora, taller y estado.</p>
+  <figure><img src="../../public/images/docs/client/Captura%20de%20pantalla%202026-10-28%20182151.png"><figcaption>Cita agendada.</figcaption></figure>
+
+  <h3>4.5 Decidir el presupuesto</h3>
+  <p>Cuando el taller publica el presupuesto, aparece en <strong>Presupuestos activos</strong> con el detalle de cada ítem y el total. El cliente pulsa <strong>Aceptar</strong> o <strong>Rechazar</strong>. La decisión queda en <strong>Presupuestos decididos</strong> y el estado se sigue actualizando hasta la entrega.</p>
+  <figure><img src="../../public/images/docs/client/Captura%20de%20pantalla%202026-10-28%20183539.png"><figcaption>Presupuesto aceptado en el historial del cliente.</figcaption></figure>
+
+  <h3>4.6 Historia del vehículo</h3>
+  <p>Desde cada vehículo, <strong>Ver historia del vehículo</strong> muestra todas las visitas, diagnósticos e intervenciones realizadas.</p>
+</section>
+
+<section class="chapter">
+  <h2>5. Guía del dueño y del encargado</h2>
+  <p>El encargado tiene el mismo menú que el dueño, <strong>excepto Facturación</strong> y la gestión de encargados.</p>
+
+  <h3>5.1 Órdenes</h3>
+  <p>Lista de todas las órdenes del taller con cliente, cita, mecánico y estado. Se puede buscar por vehículo, placa, cliente o mecánico y filtrar por estado. Con <strong>+ Crear orden</strong> el dueño o el encargado crean una <strong>orden de trabajo manual</strong> (por ejemplo, un cliente que llega sin cita). Con <strong>Gestionar</strong> se abre el detalle.</p>
+  <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20182248.png"><figcaption>Listado de órdenes.</figcaption></figure>
+
+  <h3>5.2 Agenda</h3>
+  <p>Citas del mes y del día. Se elige el mes y se pulsa <strong>Ver agenda</strong>.</p>
+  <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20182412.png"><figcaption>Agenda del taller.</figcaption></figure>
+
+  <h3>5.3 Equipo</h3>
+  <p>Con <strong>Agregar mecánico</strong> se crea la cuenta del mecánico (nombre, correo, teléfono, cédula, especialidad y contraseña). Los mecánicos pueden desactivarse en cualquier momento. Solo el dueño puede <strong>Agregar encargado</strong>.</p>
+  <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20182513.png"><figcaption>Alta de mecánico.</figcaption></figure>
+  <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20182531.png"><figcaption>Equipo: mecánicos y encargados.</figcaption></figure>
+
+  <h3>5.4 Asignar mecánico</h3>
+  <p>En el detalle de la orden, <strong>Asignar mecánico</strong> → elegir → <strong>Guardar asignación</strong>. A partir de ahí la orden aparece en el panel de ese mecánico.</p>
+  <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20182948.png"><figcaption>Asignación de mecánico.</figcaption></figure>
+
+  <h3>5.5 Formato de ingreso (Cita agendada → Vehículo ingresado)</h3>
+  <p>Cuando el vehículo llega, se completa el formato de ingreso en 5 pasos:</p>
+  <ol class="steps">
+    <li><strong>Vehículo:</strong> kilometraje, combustible, VIN y serial de motor (opcionales), carnet de circulación, póliza y la falla que reporta el cliente. Debajo se ve la historia clínica del vehículo.</li>
+    <li><strong>Accesorios:</strong> desmarcar lo que el vehículo no trae.</li>
+    <li><strong>Carrocería:</strong> marcar daños (rayón, golpe, abolladura, roto, pintura, pieza faltante) sobre el diagrama en cada vista.</li>
+    <li><strong>Fotos y notas:</strong> hasta 12 fotos con descripción y observaciones.</li>
+    <li><strong>Entrega:</strong> resumen y firmas con el dedo de quien entrega y quien recibe. Pulsar <strong>Guardar e ingresar vehículo</strong>.</li>
+  </ol>
+  <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20182727.png"><figcaption>Paso 1: Vehículo.</figcaption></figure>
+  <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20182756.png"><figcaption>Paso 2: Accesorios.</figcaption></figure>
+  <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20182832.png"><figcaption>Paso 3: Carrocería.</figcaption></figure>
+  <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20183010.png"><figcaption>Paso 5: Entrega con firmas.</figcaption></figure>
+  <p>Al guardar se genera el comprobante de ingreso, que puede imprimirse o guardarse en PDF.</p>
+  <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20183039.png"><figcaption>Comprobante del formato de ingreso.</figcaption></figure>
+
+  <h3>5.6 Diagnóstico (Vehículo ingresado → Diagnóstico listo)</h3>
+  <p>Se agregan los hallazgos (componente, tipo de intervención y descripción) con <strong>+ Añadir ítem</strong> y al final <strong>Finalizar diagnóstico</strong>. Puede hacerlo el mecánico asignado, el dueño o el encargado.</p>
+  <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20183137.png"><figcaption>Ítems de diagnóstico.</figcaption></figure>
+
+  <h3>5.7 Presupuesto (Diagnóstico listo → Presupuesto publicado)</h3>
+  <p>Solo dueño o encargado. Se coloca el precio en USD de cada ítem, la marca del repuesto (opcional) y si incluye repuestos. Se pulsa <strong>Guardar y publicar presupuesto</strong>. Con <strong>Abrir WhatsApp</strong> se envía al cliente un mensaje ya redactado.</p>
+  <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20183202.png"><figcaption>Tarifación y vista previa de WhatsApp.</figcaption></figure>
+  <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20183220.png"><figcaption>Decisión del presupuesto.</figcaption></figure>
+
+  <h3>5.8 Reparación y entrega</h3>
+  <p>Con el presupuesto aceptado la orden pasa a <strong>En reparación</strong>. Al terminar se pulsa <strong>Marcar listo para entregar</strong> y, cuando el cliente retira, se marca como <strong>entregado</strong>.</p>
+  <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20183255.png"><figcaption>Orden en reparación.</figcaption></figure>
+
+  <h3>5.9 Durabilidad de repuestos</h3>
+  <p>Estadísticas de cuánto duran los componentes y marcas reemplazados, y cuántos fallan antes de 90 días.</p>
+  <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20182608.png"><figcaption>Durabilidad de repuestos.</figcaption></figure>
+</section>
+
+<section class="chapter">
+  <h2>6. Guía del mecánico</h2>
+  <p>El mecánico entra con la cuenta creada por el dueño o encargado. Su menú tiene <strong>Diagnóstico</strong> y <strong>Agenda</strong>.</p>
+  <ul>
+    <li>Solo ve los <strong>vehículos que se le asignaron</strong>.</li>
+    <li>Registra los hallazgos del diagnóstico (componente, intervención y descripción) y pulsa <strong>Finalizar diagnóstico</strong>.</li>
+    <li><strong>No</strong> pone precios, <strong>no</strong> publica presupuestos, <strong>no</strong> ve facturación ni otros vehículos.</li>
+  </ul>
+  <div class="note ok">Flujo típico: el encargado ingresa el vehículo y lo asigna → el mecánico diagnostica → el encargado o el dueño presupuesta.</div>
+</section>
+
+<section class="chapter">
+  <h2>7. Facturación y pago a TorkeOS (solo dueño)</h2>
+  <p>El menú <strong>Facturación</strong> es exclusivo del dueño. Muestra, por mes:</p>
+  <ul>
+    <li>Cantidad de <strong>presupuestos aceptados</strong> y su monto total (base aceptada). Los rechazados no generan comisión.</li>
+    <li>La <strong>comisión de TorkeOS</strong>: un porcentaje de la base aceptada. <strong>Es el monto que el taller debe pagar a TorkeOS</strong> por ese período.</li>
+    <li>El detalle de cada presupuesto aceptado con su fecha, monto y comisión.</li>
+  </ul>
+  <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20182619.png"><figcaption>Mi facturación.</figcaption></figure>
+  <div class="note">TorkeOS solo cobra cuando el cliente <strong>aprueba</strong> un presupuesto. Para los clientes la plataforma es gratuita.</div>
+</section>
+
+<section class="chapter">
+  <h2>8. Preguntas frecuentes</h2>
+  <h3>¿El cliente puede agendar sin cuenta?</h3>
+  <p>No. Debe crear una cuenta y registrar el vehículo primero.</p>
+  <h3>¿Por qué no puedo agendar otra cita para mi vehículo?</h3>
+  <p>Porque ya tiene una orden abierta. Podrá agendar de nuevo cuando el vehículo sea entregado.</p>
+  <h3>Un cliente llegó sin cita, ¿qué hago?</h3>
+  <p>El dueño o el encargado crean una orden manual desde <strong>Órdenes → + Crear orden</strong>.</p>
+  <h3>¿El mecánico puede ver los precios?</h3>
+  <p>No. Solo ve el diagnóstico de los vehículos que tiene asignados.</p>
+  <h3>¿Necesito instalar algo?</h3>
+  <p>No. TorkeOS funciona en el navegador de cualquier teléfono, tablet o computadora.</p>
+</section>
+
+</body>
+</html>

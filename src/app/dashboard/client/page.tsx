@@ -42,7 +42,19 @@ export default async function ClientDashboardPage() {
     }];
   });
 
-  return <ClientVehicleDashboard customerName={user.fullName} budgets={items} garages={(garages ?? []).map((garage) => ({ id: garage.id, label: garage.name }))} vehicles={(vehicles ?? []).map((vehicle) => {
+  const appointments = (orders ?? []).flatMap((order) => {
+    const vehicle = vehicles?.find((item) => item.id === order.vehicle_id);
+    if (!vehicle) return [];
+    return [{
+      orderId: order.id,
+      status: order.status as OrderStatus,
+      appointmentDate: order.appointment_date,
+      vehicle: `${vehicle.brand} ${vehicle.model} ${vehicle.year} · ${vehicle.plate}`,
+      garageName: garages?.find((item) => item.id === order.garage_id)?.name ?? "Taller",
+    }];
+  });
+
+  return <ClientVehicleDashboard customerName={user.fullName} budgets={items} appointments={appointments} garages={(garages ?? []).map((garage) => ({ id: garage.id, label: garage.name }))} vehicles={(vehicles ?? []).map((vehicle) => {
     const openStatus = (orders ?? []).find((order) => order.vehicle_id === vehicle.id && order.status !== "entregado")?.status as OrderStatus | undefined;
     return { id: vehicle.id, label: `${vehicle.brand} ${vehicle.model} ${vehicle.year} · ${vehicle.plate}`, openOrderLabel: openStatus ? ORDER_STATUS_LABELS[openStatus] : null };
   })} brands={(brands ?? []).map((brand) => ({ id: brand.id, name: String(brand.name) }))} models={(models ?? []).map((model) => ({ id: model.id, brandId: model.brand_id, name: String(model.name) }))} defaultGarageId={garages?.find((garage) => garage.slug === garageSlug)?.id} />;
