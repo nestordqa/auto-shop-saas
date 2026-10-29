@@ -12,6 +12,7 @@ const garageSchema = z.discriminatedUnion("ownerMode", [
     name: z.string().trim().min(2).max(120),
     address: z.string().trim().min(5).max(300),
     mapLocation: z.string().trim().max(500).optional(),
+    specialty: z.string().trim().max(120).optional(),
   }),
   z.object({
     ownerMode: z.literal("new"),
@@ -23,6 +24,7 @@ const garageSchema = z.discriminatedUnion("ownerMode", [
     name: z.string().trim().min(2).max(120),
     address: z.string().trim().min(5).max(300),
     mapLocation: z.string().trim().max(500).optional(),
+    specialty: z.string().trim().max(120).optional(),
   }),
 ]);
 
@@ -85,6 +87,7 @@ export async function POST(request: Request) {
     slug,
     address: input.address,
     map_location: input.mapLocation || null,
+    specialty: input.specialty || null,
     owner_id: ownerId,
   });
 

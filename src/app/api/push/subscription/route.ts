@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Suscripción inválida." }, { status: 400 });
   const { user, admin } = await authorize();
   if (!user) return NextResponse.json({ error: "Sesión no válida." }, { status: 401 });
-  if (!admin) return NextResponse.json({ error: "Las notificaciones no están configuradas." }, { status: 503 });
+  if (!admin) return NextResponse.json({ error: "El servidor no tiene SUPABASE_SECRET_KEY configurada." }, { status: 503 });
 
   const { error } = await admin.from("push_subscriptions").upsert({
     user_id: user.id,
@@ -44,7 +44,7 @@ export async function DELETE(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Suscripción inválida." }, { status: 400 });
   const { user, admin } = await authorize();
   if (!user) return NextResponse.json({ error: "Sesión no válida." }, { status: 401 });
-  if (!admin) return NextResponse.json({ error: "Las notificaciones no están configuradas." }, { status: 503 });
+  if (!admin) return NextResponse.json({ error: "El servidor no tiene SUPABASE_SECRET_KEY configurada." }, { status: 503 });
   await admin.from("push_subscriptions").delete().eq("endpoint", parsed.data.endpoint).eq("user_id", user.id);
   return NextResponse.json({ success: true });
 }

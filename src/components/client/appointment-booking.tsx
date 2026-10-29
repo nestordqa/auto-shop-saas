@@ -1,16 +1,18 @@
 "use client";
 
-import { CalendarSearch, CheckCircle2, LoaderCircle } from "lucide-react";
+import { CalendarSearch, CheckCircle2, LoaderCircle, MapPin, Plus, Wrench, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 type Option = { id: string; label: string };
+type GarageOption = Option & { address?: string | null; specialty?: string | null };
 /** `openOrderLabel` marks a vehicle that already has an order in progress and cannot book another. */
 type VehicleOption = Option & { openOrderLabel?: string | null };
 
 type AppointmentBookingProps = {
-  garages: Option[];
+  garages: GarageOption[];
   vehicles: VehicleOption[];
+  /** Garage of the garage link page. With this or `defaultGarageId` (client who came from a garage link) the garage is shown with "Ver más talleres"; otherwise a plain select. */
   lockedGarageId?: string;
   defaultGarageId?: string;
 };
@@ -23,6 +25,8 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ error?: string; success?: string }>({});
   const today = new Date().toLocaleDateString("en-CA");
+  const [garageId, setGarageId] = useState(lockedGarageId ?? defaultGarageId ?? "");
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   async function loadSlots(form: HTMLFormElement) {
     const data = new FormData(form);
@@ -65,12 +69,37 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
     router.refresh();
   }
 
-  const contextGarageId = lockedGarageId ?? defaultGarageId;
-  const contextGarage = garages.find(({ id }) => id === contextGarageId);
+  const garage = garages.find(({ id }) => id === garageId);
+  const otherGarages = garages.filter(({ id }) => id !== garageId);
+
+  function chooseGarage(id: string) {
+    setGarageId(id);
+    setPickerOpen(false);
+    setSlots([]);
+    setSelectedTime("");
+    setMessage({});
+  }
+
   return (
     <form onSubmit={submit} className="mt-4 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm">
       <div className="grid gap-4 p-5 md:grid-cols-3">
-        {contextGarageId ? <label className="grid min-w-0 content-start gap-2 text-sm font-bold">Taller<input type="hidden" name="garageId" value={contextGarageId} /><select value={contextGarageId} disabled className="min-h-12 w-full min-w-0 truncate rounded-md border border-stone-200 bg-stone-100 px-3 text-stone-800 disabled:opacity-100"><option value={contextGarageId}>{contextGarage?.label ?? "Taller seleccionado"}</option></select></label> : <label className="grid min-w-0 content-start gap-2 text-sm font-bold">Taller<select name="garageId" defaultValue="" className="min-h-12 w-full min-w-0 truncate rounded-md border border-stone-300 bg-white px-3" required><option value="">Seleccionar</option>{garages.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>}
+        <div className="grid min-w-0 content-start gap-2 text-sm font-bold">
+          Taller
+          <input type="hidden" name="garageId" value={garageId} />
+          {lockedGarageId ?? defaultGarageId ? (
+            <>
+              <div className="min-h-12 min-w-0 rounded-md border border-stone-200 bg-stone-100 px-3 py-2">
+                <p className="truncate text-stone-800">{garage?.label ?? "Taller seleccionado"}</p>
+                {garage?.specialty && <p className="truncate text-xs font-semibold text-[#d9341d]">{garage.specialty}</p>}
+              </div>
+              {otherGarages.length > 0 && (
+                <button type="button" onClick={() => setPickerOpen(true)} className="flex items-center gap-1 justify-self-start text-xs font-bold text-[#d9341d] hover:underline"><Plus size={14} /> Ver más talleres</button>
+              )}
+            </>
+          ) : (
+            <select value={garageId} onChange={(event) => chooseGarage(event.target.value)} className="min-h-12 w-full min-w-0 truncate rounded-md border border-stone-300 bg-white px-3 font-normal" required><option value="">Seleccionar</option>{garages.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select>
+          )}
+        </div>
         <label className="grid min-w-0 content-start gap-2 text-sm font-bold">Vehículo<select name="vehicleId" className="min-h-12 w-full min-w-0 truncate rounded-md border border-stone-300 bg-white px-3" required><option value="">Seleccionar</option>{vehicles.map((item) => <option key={item.id} value={item.id} disabled={Boolean(item.openOrderLabel)}>{item.label}{item.openOrderLabel ? ` · En servicio: ${item.openOrderLabel}` : ""}</option>)}</select></label>
         <label className="grid min-w-0 content-start gap-2 text-sm font-bold">Fecha<input name="date" type="date" min={today} className="min-h-12 w-full min-w-0 rounded-md border border-stone-300 px-3" required /></label>
         {vehicles.some((item) => item.openOrderLabel) && <p className="-mt-1 text-xs text-stone-500 md:col-span-3">Los vehículos con un servicio en curso podrán agendar de nuevo cuando se entreguen.</p>}
@@ -80,6 +109,30 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
       {!loading && slots.length === 0 && selectedTime === "" && <p className="border-t border-stone-200 p-5 text-sm text-stone-500">Consulta una fecha para ver los slots de 08:00 a 18:00.</p>}
       {message.error && <p role="alert" className="border-t border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{message.error}</p>}
       {message.success && <p role="status" className="border-t border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">{message.success}</p>}
+      {pickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/55 sm:items-center sm:justify-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="garage-picker-title" onClick={() => setPickerOpen(false)}>
+          <div className="max-h-[85dvh] w-full overflow-y-auto rounded-t-lg bg-white shadow-2xl sm:max-w-lg sm:rounded-lg" onClick={(event) => event.stopPropagation()}>
+            <div className="sticky top-0 flex items-center justify-between border-b border-stone-200 bg-white p-4">
+              <h2 id="garage-picker-title" className="text-lg font-bold">Talleres disponibles</h2>
+              <button type="button" onClick={() => setPickerOpen(false)} className="grid size-10 place-items-center rounded-md hover:bg-stone-100" aria-label="Cerrar"><X size={20} /></button>
+            </div>
+            <ul className="divide-y divide-stone-100">
+              {garages.map((item) => (
+                <li key={item.id}>
+                  <button type="button" onClick={() => chooseGarage(item.id)} className={`flex w-full items-start gap-3 p-4 text-left hover:bg-stone-50 ${item.id === garageId ? "bg-orange-50" : ""}`}>
+                    <span className="grid size-10 shrink-0 place-items-center rounded-md bg-stone-900 text-white"><Wrench size={18} /></span>
+                    <span className="min-w-0">
+                      <span className="block font-bold">{item.label}{item.id === garageId && <span className="ml-2 text-xs font-semibold text-[#d9341d]">Seleccionado</span>}</span>
+                      {item.specialty && <span className="block text-sm font-semibold text-[#d9341d]">{item.specialty}</span>}
+                      {item.address && <span className="mt-0.5 flex items-start gap-1 text-sm text-stone-500"><MapPin size={14} className="mt-0.5 shrink-0" />{item.address}</span>}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

@@ -11,7 +11,7 @@ export const noIndex = { index: false, follow: false } as const;
 export const getPublicGarage = cache(async (slug: string) => {
   const admin = createAdminClient();
   if (!admin) return null;
-  const { data } = await admin.from("garages").select("id, name, address, map_location, slug, updated_at").eq("slug", slug).maybeSingle();
+  const { data } = await admin.from("garages").select("id, name, address, map_location, slug, specialty, updated_at").eq("slug", slug).maybeSingle();
   return data;
 });
 

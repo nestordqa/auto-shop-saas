@@ -1,6 +1,5 @@
-import { cookies } from "next/headers";
-
 import type { VehicleIntake } from "@/lib/intake";
+import { resolveClientGarage } from "@/lib/client-garage";
 import { getOrderIntakes } from "@/lib/intake-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -28,20 +27,21 @@ export type ClientOrder = {
 
 /** Everything the client portal pages show, loaded with one round of queries. */
 export async function loadClientPortal(userId: string) {
-  const garageSlug = (await cookies()).get("garage_context")?.value;
-  const dataClient = createAdminClient() ?? await createClient();
+  const admin = createAdminClient();
+  const dataClient = admin ?? await createClient();
   const { data: vehicles } = await dataClient.from("vehicles").select("id, brand, model, year, plate").eq("user_id", userId);
   const vehicleIds = (vehicles ?? []).map(({ id }) => id);
   const { data: orderRows } = vehicleIds.length
     ? await dataClient.from("orders").select("id, vehicle_id, garage_id, status, appointment_date").in("vehicle_id", vehicleIds).order("created_at", { ascending: false })
     : { data: [] };
   const orderIds = (orderRows ?? []).map(({ id }) => id);
-  const [{ data: budgets }, { data: diagnostics }, { data: history }, { data: garages }, intakes] = await Promise.all([
+  const [{ data: budgets }, { data: diagnostics }, { data: history }, { data: garages }, intakes, homeGarage] = await Promise.all([
     orderIds.length ? dataClient.from("budgets").select("order_id, includes_parts, total_amount, approved").in("order_id", orderIds) : Promise.resolve({ data: [] }),
     orderIds.length ? dataClient.from("diagnostics").select("order_id, description, price").in("order_id", orderIds).order("created_at") : Promise.resolve({ data: [] }),
     orderIds.length ? dataClient.from("order_status_history").select("order_id, status, changed_at").in("order_id", orderIds).order("changed_at") : Promise.resolve({ data: [] }),
-    dataClient.from("garages").select("id, name, address, slug").order("name"),
+    dataClient.from("garages").select("id, name, address, specialty").order("name"),
     getOrderIntakes(dataClient, orderIds),
+    admin ? resolveClientGarage(admin) : Promise.resolve(null),
   ]);
 
   const vehicleLabel = (vehicle: { brand: string; model: string; year: number; plate: string }) => `${vehicle.brand} ${vehicle.model} ${vehicle.year} · ${vehicle.plate}`;
@@ -76,7 +76,7 @@ export async function loadClientPortal(userId: string) {
       const openStatus = orders.find((order) => order.vehicleId === vehicle.id && order.status !== "entregado")?.status;
       return { id: vehicle.id, label: vehicleLabel(vehicle), openOrderLabel: openStatus ? ORDER_STATUS_LABELS[openStatus] : null };
     }),
-    garages: (garages ?? []).map((garage) => ({ id: garage.id, label: garage.name })),
-    defaultGarageId: garages?.find((garage) => garage.slug === garageSlug)?.id,
+    garages: (garages ?? []).map((garage) => ({ id: garage.id, label: garage.name, address: garage.address, specialty: garage.specialty })),
+    defaultGarageId: homeGarage?.id,
   };
 }

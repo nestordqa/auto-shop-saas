@@ -31,13 +31,16 @@ export async function getPushState(): Promise<PushState> {
 
 async function saveSubscription(subscription: PushSubscription) {
   const response = await fetch("/api/push/subscription", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(subscription.toJSON()) });
-  if (!response.ok) throw new Error("No se pudo activar las notificaciones.");
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({})) as { error?: string };
+    throw new Error(result.error ?? "No se pudo activar las notificaciones.");
+  }
 }
 
 /** Must run from a click: Safari and Firefox only allow the permission prompt after a user gesture. */
 export async function subscribeToPush() {
   const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  if (!key) throw new Error("Las notificaciones no están configuradas.");
+  if (!key) throw new Error("Falta la clave pública de notificaciones en este despliegue (NEXT_PUBLIC_VAPID_PUBLIC_KEY).");
   const permission = await Notification.requestPermission();
   if (permission !== "granted") return permission === "denied" ? "denied" : "default";
   const reg = await registration();

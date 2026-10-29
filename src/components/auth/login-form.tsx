@@ -3,7 +3,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, LoaderCircle } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -18,7 +17,6 @@ const loginSchema = z.object({
 type LoginInput = z.infer<typeof loginSchema>;
 
 export function LoginForm({ nextPath }: { nextPath?: string }) {
-  const router = useRouter();
   const [serverError, setServerError] = useState<string>();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
 
@@ -36,8 +34,10 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
       return;
     }
 
-    router.replace(result.redirectTo);
-    router.refresh();
+    // Full navigation: a soft router.replace from /login/<slug> could be overridden by the
+    // refresh of the login route and leave the user on the form.
+    window.location.assign(result.redirectTo);
+    await new Promise(() => {});
   }
 
   return (
