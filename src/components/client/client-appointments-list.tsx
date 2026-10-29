@@ -30,6 +30,7 @@ const progressStatuses: OrderStatus[] = [
   "diagnosticado",
   "presupuestado",
   "en_reparacion",
+  "en_prueba",
   "listo_para_entregar",
   "entregado",
 ];

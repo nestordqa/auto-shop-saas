@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { roleRoutes } from "@/lib/auth/role-routes";
 import { createClient } from "@/lib/supabase/server";
 import type { AppRole } from "@/types/domain";
 
@@ -9,14 +10,6 @@ const loginSchema = z.object({
   password: z.string().min(8),
   nextPath: z.string().optional(),
 });
-
-const roleRoutes: Record<AppRole, string> = {
-  admin: "/dashboard/admin",
-  garage_owner: "/dashboard/owner",
-  garage_manager: "/dashboard/owner",
-  mechanic: "/dashboard/mechanic",
-  client: "/dashboard/client",
-};
 
 export async function POST(request: Request) {
   const parsed = loginSchema.safeParse(await request.json().catch(() => null));

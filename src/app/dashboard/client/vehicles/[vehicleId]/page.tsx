@@ -29,7 +29,7 @@ export default async function ClientVehiclePage({ params }: { params: Promise<{ 
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
-      <Link href="/dashboard/client#vehicles" className="inline-flex items-center gap-2 text-sm font-bold text-stone-600"><ArrowLeft size={18} /> Mis vehículos</Link>
+      <Link href="/dashboard/client/vehicles" className="inline-flex items-center gap-2 text-sm font-bold text-stone-600"><ArrowLeft size={18} /> Mis vehículos</Link>
       <header className="my-6">
         <p className="text-xs font-bold uppercase text-[#d9341d]">Historia del vehículo</p>
         <h1 className="mt-2 font-display text-3xl font-bold sm:text-4xl">{vehicleLabel}</h1>

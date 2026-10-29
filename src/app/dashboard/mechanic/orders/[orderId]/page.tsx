@@ -7,6 +7,7 @@ import { IntakeSummary } from "@/components/intake/intake-summary";
 import { VehicleIntakeForm } from "@/components/intake/vehicle-intake-form";
 import { MechanicDiagnosticForm } from "@/components/orders/mechanic-diagnostic-form";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
+import { OrderProgressAction } from "@/components/owner/order-progress-action";
 import { requireMechanic } from "@/lib/auth/require-mechanic";
 import { getOrderIntake } from "@/lib/intake-data";
 import { isStorageConfigured } from "@/lib/storage/intake-photos";
@@ -50,12 +51,20 @@ export default async function MechanicOrderPage({ params }: { params: Promise<{ 
       {status === "por_ingresar" && (
         <VehicleIntakeForm orderId={order.id} vehicleLabel={vehicleLabel} customerName={customer?.full_name ?? ""} storageEnabled={isStorageConfigured()} />
       )}
-      {intake && <IntakeSummary intake={intake} vehicleLabel={vehicleLabel} orderReference={reference} defaultOpen={status === "ingresado"} />}
+      {intake && <IntakeSummary intake={intake} vehicleLabel={vehicleLabel} orderReference={reference} defaultOpen={status === "ingresado"} downloadable={false} />}
       {status !== "por_ingresar" && <VehicleHistoryPanel history={history} currentMileage={intake?.mileage} />}
       <div className="mt-4">
         {status === "ingresado" && <MechanicDiagnosticForm orderId={order.id} initialStatus={status} initialDiagnostics={diagnostics} />}
         {status === "diagnosticado" && <ReadOnlyDiagnostics diagnostics={diagnostics} />}
-        {!(["por_ingresar", "ingresado", "diagnosticado"] as OrderStatus[]).includes(status) && <p className="rounded-lg border border-stone-200 bg-white p-5 text-stone-600">El diagnóstico ya finalizó. El taller gestiona el presupuesto y los siguientes estados.</p>}
+        {(status === "en_reparacion" || status === "en_prueba") && (
+          <>
+            <p className="mb-3 rounded-lg border border-stone-200 bg-white p-5 text-stone-600">
+              {status === "en_reparacion" ? "Cuando termines la reparación, pasa el vehículo a prueba." : "Si la prueba sale bien, marca el vehículo como listo para entregar. Si no, vuelve a reparación."}
+            </p>
+            <OrderProgressAction orderId={order.id} status={status} mechanic />
+          </>
+        )}
+        {!(["por_ingresar", "ingresado", "diagnosticado", "en_reparacion", "en_prueba"] as OrderStatus[]).includes(status) && <p className="rounded-lg border border-stone-200 bg-white p-5 text-stone-600">El diagnóstico ya finalizó. El taller gestiona el presupuesto y los siguientes estados.</p>}
       </div>
     </div>
   );

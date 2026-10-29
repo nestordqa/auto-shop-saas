@@ -95,16 +95,17 @@
 
 <section class="chapter">
   <h2>3. Estados de una orden (ciclo del vehículo)</h2>
-  <p>Cada visita del vehículo al taller es una <strong>orden de trabajo</strong>. La orden avanza por estos estados, y tanto el taller como el cliente ven el estado actualizado en tiempo real.</p>
+  <p>Cada visita del vehículo al taller es una <strong>orden de trabajo</strong>. La orden avanza por estos estados, y tanto el taller como el cliente ven el estado actualizado en tiempo real. Cada cambio queda registrado con su fecha y hora, y el cliente lo ve en el <strong>seguimiento</strong> de su orden.</p>
   <table>
     <tr><th>#</th><th>Estado</th><th>Qué significa</th><th>Quién lo cambia</th></tr>
     <tr><td>1</td><td><span class="pill" style="background:#e0f2fe;color:#075985">Cita agendada</span></td><td>El cliente reservó una cita, o el taller creó la orden manualmente. El vehículo aún no llega.</td><td>Cliente (al agendar) / Dueño o encargado</td></tr>
     <tr><td>2</td><td><span class="pill" style="background:#e0e7ff;color:#3730a3">Vehículo ingresado</span></td><td>El vehículo llegó y se completó el <strong>formato de ingreso</strong> (kilometraje, combustible, accesorios, daños, fotos y firmas). Sin formato no se puede ingresar.</td><td>Dueño o encargado</td></tr>
     <tr><td>3</td><td><span class="pill" style="background:#fef3c7;color:#92400e">Diagnóstico listo</span></td><td>Se registraron los hallazgos y se finalizó el diagnóstico (mínimo un hallazgo).</td><td>Mecánico asignado / Dueño o encargado</td></tr>
     <tr><td>4</td><td><span class="pill" style="background:#ede9fe;color:#5b21b6">Presupuesto publicado</span></td><td>El taller puso precio a cada ítem y publicó el presupuesto. El cliente debe decidir.</td><td>Dueño o encargado</td></tr>
-    <tr><td>5a</td><td><span class="pill" style="background:#ffedd5;color:#9a3412">En reparación</span></td><td>El presupuesto fue <strong>aceptado</strong>. El taller trabaja en el vehículo.</td><td>Cliente (al aceptar)</td></tr>
+    <tr><td>5a</td><td><span class="pill" style="background:#ffedd5;color:#9a3412">En reparación</span></td><td>El presupuesto fue <strong>aceptado</strong>. El taller trabaja en el vehículo.</td><td>Cliente (al aceptar) / Mecánico, dueño o encargado (al volver de prueba)</td></tr>
+    <tr><td>5c</td><td><span class="pill" style="background:#cffafe;color:#155e75">En prueba</span></td><td>Se está probando el vehículo para confirmar la reparación. Puede volver a <strong>En reparación</strong> y regresar a prueba las veces que haga falta.</td><td>Mecánico asignado / Dueño o encargado</td></tr>
     <tr><td>5b</td><td><span class="pill" style="background:#fee2e2;color:#991b1b">Presupuesto rechazado</span></td><td>El cliente <strong>rechazó</strong> el presupuesto.</td><td>Cliente (al rechazar)</td></tr>
-    <tr><td>6</td><td><span class="pill" style="background:#d1fae5;color:#065f46">Listo para entregar</span></td><td>La reparación terminó; el cliente puede retirar el vehículo.</td><td>Dueño o encargado</td></tr>
+    <tr><td>6</td><td><span class="pill" style="background:#d1fae5;color:#065f46">Listo para entregar</span></td><td>La reparación (y la prueba, si se hizo) terminó; el cliente puede retirar el vehículo.</td><td>Dueño o encargado / Mecánico asignado (desde En prueba)</td></tr>
     <tr><td>7</td><td><span class="pill" style="background:#f5f5f4;color:#57534e">Vehículo entregado</span></td><td>El vehículo fue retirado. La orden queda cerrada en la historia del vehículo.</td><td>Dueño o encargado</td></tr>
   </table>
   <div class="note"><strong>Una orden abierta por vehículo:</strong> mientras un vehículo tenga una orden que no esté en “Vehículo entregado”, no se puede agendar otra cita para ese vehículo. Podrá agendar de nuevo cuando se entregue.</div>
@@ -117,29 +118,41 @@
   <figure><img src="../../public/images/docs/client/Captura%20de%20pantalla%202026-10-28%20181639.png"><figcaption>Registro del cliente.</figcaption></figure>
 
   <h3>4.2 Portal del cliente</h3>
-  <p>Al entrar ve sus presupuestos activos (por decidir), el historial de presupuestos decididos, sus vehículos y sus citas.</p>
-  <figure><img src="../../public/images/docs/client/Captura%20de%20pantalla%202026-10-28%20181702.png"><figcaption>Inicio del portal del cliente.</figcaption></figure>
+  <p>El menú tiene tres páginas:</p>
+  <ul>
+    <li><strong>Inicio:</strong> los <strong>presupuestos por decidir</strong> y los <strong>servicios en curso</strong>, cada uno con su seguimiento y su formato de ingreso.</li>
+    <li><strong>Vehículos:</strong> los vehículos registrados, el botón para agregar uno y el acceso a la historia de cada vehículo.</li>
+    <li><strong>Citas:</strong> todas las citas y servicios, y el formulario de <strong>Nueva cita</strong>.</li>
+  </ul>
+  <figure><img src="../../public/images/docs/client/inicio-presupuesto-por-decidir.png"><figcaption>Inicio: presupuesto por decidir con su seguimiento y formato de ingreso.</figcaption></figure>
 
   <h3>4.3 Registrar un vehículo</h3>
-  <p>En <strong>Mis vehículos → Agregar vehículo</strong> elige marca, modelo, año, color y placa, y pulsa <strong>Guardar vehículo</strong>. Es obligatorio para poder agendar.</p>
+  <p>En <strong>Vehículos → Agregar vehículo</strong> elige marca, modelo, año, color y placa, y pulsa <strong>Guardar vehículo</strong>. Es obligatorio para poder agendar.</p>
   <figure><img src="../../public/images/docs/client/Captura%20de%20pantalla%202026-10-28%20181739.png"><figcaption>Registro de vehículo.</figcaption></figure>
 
   <h3>4.4 Agendar una cita</h3>
   <ol class="steps">
-    <li>En <strong>Nueva cita</strong> selecciona el taller, el vehículo y la fecha.</li>
+    <li>En <strong>Citas → Nueva cita</strong> (o con el botón <strong>Agendar cita</strong> del inicio) selecciona el taller, el vehículo y la fecha.</li>
     <li>Pulsa <strong>Consultar horarios</strong>. Se muestran los horarios libres entre 08:00 y 18:00, cada 30 minutos.</li>
     <li>Elige un horario y pulsa <strong>Confirmar cita</strong>.</li>
   </ol>
   <figure><img src="../../public/images/docs/client/Captura%20de%20pantalla%202026-10-28%20181814.png"><figcaption>Selección de horario.</figcaption></figure>
-  <p>La cita aparece en <strong>Mis citas</strong> con fecha, hora, taller y estado.</p>
+  <p>La cita aparece en <strong>Citas</strong> con fecha, hora, taller y estado.</p>
   <figure><img src="../../public/images/docs/client/Captura%20de%20pantalla%202026-10-28%20182151.png"><figcaption>Cita agendada.</figcaption></figure>
 
   <h3>4.5 Decidir el presupuesto</h3>
-  <p>Cuando el taller publica el presupuesto, aparece en <strong>Presupuestos activos</strong> con el detalle de cada ítem y el total. El cliente pulsa <strong>Aceptar</strong> o <strong>Rechazar</strong>. La decisión queda en <strong>Presupuestos decididos</strong> y el estado se sigue actualizando hasta la entrega.</p>
-  <figure><img src="../../public/images/docs/client/Captura%20de%20pantalla%202026-10-28%20183539.png"><figcaption>Presupuesto aceptado en el historial del cliente.</figcaption></figure>
+  <p>Cuando el taller publica el presupuesto, aparece en <strong>Inicio → Presupuestos por decidir</strong> con el detalle de cada ítem y el total. También puede decidirse desde <strong>Citas</strong>, abriendo la cita correspondiente. El cliente pulsa <strong>Aceptar presupuesto</strong> o <strong>Rechazar presupuesto</strong>. La orden muestra luego «Aprobaste este presupuesto» o «Rechazaste este presupuesto», y su estado se sigue actualizando hasta la entrega.</p>
 
-  <h3>4.6 Historia del vehículo</h3>
-  <p>Desde cada vehículo, <strong>Ver historia del vehículo</strong> muestra todas las visitas, diagnósticos e intervenciones realizadas.</p>
+  <h3>4.6 Seguimiento de la orden</h3>
+  <p>Cada orden muestra su <strong>seguimiento</strong>: los estados por los que ya pasó el vehículo con fecha y hora, el estado actual resaltado y, en gris, los pasos que faltan. En Inicio aparece junto al presupuesto; en <strong>Citas</strong> se ve al tocar cada cita.</p>
+  <figure><img src="../../public/images/docs/client/seguimiento-y-formato-de-ingreso.png"><figcaption>Servicio en curso: seguimiento por fechas y formato de ingreso con su botón PDF.</figcaption></figure>
+
+  <h3>4.7 Formato de ingreso en PDF</h3>
+  <p>Una vez ingresado el vehículo, la orden muestra el <strong>Formato de ingreso</strong> que llenó el taller. El botón <strong>PDF</strong> abre el documento y el diálogo de impresión: se elige <strong>Guardar como PDF</strong>. El contenido del documento se describe en 5.5.</p>
+
+  <h3>4.8 Historia del vehículo</h3>
+  <p>Desde <strong>Vehículos</strong>, <strong>Ver historia del vehículo</strong> muestra todas las visitas, diagnósticos e intervenciones realizadas, con el formato de ingreso de cada visita.</p>
+  <figure><img src="../../public/images/docs/shared/historia-clinica-del-vehiculo.png"><figcaption>Historia clínica del vehículo.</figcaption></figure>
 </section>
 
 <section class="chapter">
@@ -176,7 +189,8 @@
   <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20182756.png"><figcaption>Paso 2: Accesorios.</figcaption></figure>
   <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20182832.png"><figcaption>Paso 3: Carrocería.</figcaption></figure>
   <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20183010.png"><figcaption>Paso 5: Entrega con firmas.</figcaption></figure>
-  <p>Al guardar se genera el comprobante de ingreso, que puede imprimirse o guardarse en PDF.</p>
+  <p>Al guardar se genera el comprobante de ingreso. En el detalle de la orden, el botón <strong>PDF</strong> de «Formato de ingreso» abre un documento que contiene <strong>solo el ingreso de ese vehículo</strong>: logo de TorkeOS, número de orden, fecha de recepción, cliente (nombre, documento y teléfono), taller y el formato completo (kilometraje, combustible, documentos, VIN y motor, falla reportada, accesorios, daños sobre el diagrama, fotos, observaciones y las dos firmas). El diálogo de impresión se abre solo; se elige <strong>Guardar como PDF</strong>. Sirve de respaldo ante cualquier reclamo sobre el estado en que llegó el vehículo.</p>
+  <div class="note"><strong>Quién puede descargarlo:</strong> el dueño y el encargado del taller, y el cliente dueño del vehículo. El mecánico ve el formato, pero no tiene el botón de PDF.</div>
   <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20183039.png"><figcaption>Comprobante del formato de ingreso.</figcaption></figure>
 
   <h3>5.6 Diagnóstico (Vehículo ingresado → Diagnóstico listo)</h3>
@@ -189,7 +203,7 @@
   <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20183220.png"><figcaption>Decisión del presupuesto.</figcaption></figure>
 
   <h3>5.8 Reparación y entrega</h3>
-  <p>Con el presupuesto aceptado la orden pasa a <strong>En reparación</strong>. Al terminar se pulsa <strong>Marcar listo para entregar</strong> y, cuando el cliente retira, se marca como <strong>entregado</strong>.</p>
+  <p>Con el presupuesto aceptado la orden pasa a <strong>En reparación</strong>. Al terminar se pulsa <strong>Pasar a prueba</strong>; si la prueba no sale bien, <strong>Volver a reparación</strong>, tantas veces como haga falta. Cada paso queda en el seguimiento con su fecha y hora. Cuando todo está bien se pulsa <strong>Marcar listo para entregar</strong> (también disponible directamente desde reparación) y, cuando el cliente retira, se marca como <strong>entregado</strong>.</p>
   <figure><img src="../../public/images/docs/owner/Captura%20de%20pantalla%202026-10-28%20183255.png"><figcaption>Orden en reparación.</figcaption></figure>
 
   <h3>5.9 Durabilidad de repuestos</h3>
@@ -203,8 +217,18 @@
   <ul>
     <li>Solo ve los <strong>vehículos que se le asignaron</strong>.</li>
     <li>Registra los hallazgos del diagnóstico (componente, intervención y descripción) y pulsa <strong>Finalizar diagnóstico</strong>.</li>
+    <li>Con la orden <strong>En reparación</strong>, pulsa <strong>Pasar a prueba</strong>; si la prueba falla, <strong>Volver a reparación</strong>. Si la prueba sale bien, pulsa <strong>Marcar listo para entregar</strong>. Registrar la entrega al cliente le corresponde al dueño o al encargado.</li>
     <li><strong>No</strong> pone precios, <strong>no</strong> publica presupuestos, <strong>no</strong> ve facturación ni otros vehículos.</li>
   </ul>
+  <h3>6.1 Historia clínica del vehículo</h3>
+  <p>En cada orden asignada, el mecánico ve la <strong>historia clínica</strong> del vehículo antes de diagnosticar:</p>
+  <ul>
+    <li><strong>Mapa por sistema</strong> (enfriamiento, frenos, motor…): qué componentes se intervinieron, hace cuánto tiempo y cuántos kilómetros, y cuáles no tienen registro.</li>
+    <li><strong>Pistas</strong>: si un componente es reciente, sugiere por dónde empezar a revisar. Ejemplo: si el refrigerante se cambió hace poco y la falla es de enfriamiento, revisar primero bomba de agua, termostato y radiador.</li>
+    <li><strong>Visitas anteriores</strong>: fecha, taller, kilometraje, falla reportada y trabajos realizados.</li>
+  </ul>
+  <p>Así evita repetir trabajos y detecta repuestos que fallan antes de tiempo. El dueño, el encargado y el cliente ven la misma historia.</p>
+  <figure><img src="../../public/images/docs/shared/historia-clinica-del-vehiculo.png"><figcaption>Historia clínica: mapa por sistema, pista y visitas anteriores.</figcaption></figure>
   <div class="note ok">Flujo típico: el encargado ingresa el vehículo y lo asigna → el mecánico diagnostica → el encargado o el dueño presupuesta.</div>
 </section>
 
@@ -231,7 +255,13 @@
   <h3>¿El mecánico puede ver los precios?</h3>
   <p>No. Solo ve el diagnóstico de los vehículos que tiene asignados.</p>
   <h3>¿Necesito instalar algo?</h3>
-  <p>No. TorkeOS funciona en el navegador de cualquier teléfono, tablet o computadora.</p>
+  <p>No es obligatorio: TorkeOS funciona en el navegador de cualquier teléfono, tablet o computadora. Pero puede <strong>instalarse como app</strong> y queda como un ícono más en el dispositivo:</p>
+  <ul>
+    <li><strong>Android y Chrome/Edge en computadora:</strong> en la pantalla de inicio de sesión, pulsar <strong>Instalar app en este dispositivo</strong>.</li>
+    <li><strong>iPhone/iPad:</strong> en Safari, tocar <strong>Compartir</strong> y luego <strong>Agregar a inicio</strong>.</li>
+  </ul>
+  <h3>¿Tengo que iniciar sesión cada vez?</h3>
+  <p>No. La sesión queda abierta en el dispositivo hasta que se pulse <strong>Cerrar sesión</strong>. Al abrir la app instalada se entra directo al panel de cada usuario.</p>
 </section>
 
 </body>

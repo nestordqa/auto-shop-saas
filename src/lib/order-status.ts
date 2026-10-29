@@ -28,6 +28,7 @@ export const ORDER_STATUS_TONES: Record<OrderStatus, { badge: string; dot: strin
   diagnosticado: { badge: "border-amber-200 bg-amber-50 text-amber-800", dot: "bg-amber-500" },
   presupuestado: { badge: "border-violet-200 bg-violet-50 text-violet-800", dot: "bg-violet-500" },
   en_reparacion: { badge: "border-orange-200 bg-orange-50 text-orange-800", dot: "bg-orange-500" },
+  en_prueba: { badge: "border-cyan-200 bg-cyan-50 text-cyan-800", dot: "bg-cyan-500" },
   presupuesto_rechazado: { badge: "border-red-200 bg-red-50 text-red-800", dot: "bg-red-500" },
   listo_para_entregar: { badge: "border-emerald-200 bg-emerald-50 text-emerald-800", dot: "bg-emerald-500" },
   entregado: { badge: "border-stone-200 bg-stone-100 text-stone-500", dot: "bg-stone-400" },

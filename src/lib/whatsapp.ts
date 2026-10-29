@@ -22,6 +22,7 @@ const statusCopy: Record<OrderStatus, string> = {
   diagnosticado: "Finalizamos el diagnóstico. Revisa el presupuesto para continuar.",
   presupuestado: "Tu presupuesto está listo. Revisa el detalle para aprobarlo o rechazarlo.",
   en_reparacion: "Tu presupuesto fue aprobado y comenzamos la reparación.",
+  en_prueba: "Estamos probando tu vehículo para confirmar que la reparación quedó bien.",
   presupuesto_rechazado: "Registramos el rechazo del presupuesto. Contáctanos para coordinar los próximos pasos.",
   listo_para_entregar: "El trabajo terminó y tu vehículo está listo para retirar.",
   entregado: "La orden fue cerrada con la entrega de tu vehículo. Gracias por elegirnos.",

@@ -136,8 +136,7 @@ export default async function MechanicDashboardPage({
                         href={`/dashboard/mechanic/orders/${order.id}`}
                         className="inline-flex min-h-10 items-center rounded-md bg-stone-900 px-4 font-bold text-white"
                       >
-                        {order.status === "por_ingresar" ||
-                        order.status === "ingresado"
+                        {["por_ingresar", "ingresado", "en_reparacion", "en_prueba"].includes(order.status)
                           ? "Trabajar"
                           : "Ver"}
                       </Link>

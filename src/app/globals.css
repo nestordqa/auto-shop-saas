@@ -70,23 +70,7 @@ a {
   }
 }
 
-/* Print a single block marked by PrintButton */
 @media print {
-  body:has([data-print-root]) * {
-    visibility: hidden;
-  }
-
-  [data-print-root],
-  [data-print-root] * {
-    visibility: visible;
-  }
-
-  [data-print-root] {
-    position: absolute;
-    inset: 0 0 auto 0;
-    border: 0;
-  }
-
   .intake-marker-ring {
     animation: none;
     display: none;

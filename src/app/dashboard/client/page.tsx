@@ -1,61 +1,37 @@
-import { cookies } from "next/headers";
+import { CalendarDays } from "lucide-react";
 
-import { ClientVehicleDashboard } from "@/components/dashboard/client-vehicle-dashboard";
+import { EmptyState, HeroLink, OrderCard, PortalHero, SectionHeading } from "@/components/client/client-portal";
 import { requireRole } from "@/lib/auth/require-role";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
-import { ORDER_STATUS_LABELS, type OrderStatus } from "@/types/domain";
+import { loadClientPortal } from "@/lib/client-portal";
 
-export default async function ClientDashboardPage() {
+export default async function ClientHomePage() {
   const user = await requireRole(["client"]);
-  const garageSlug = (await cookies()).get("garage_context")?.value;
-  const dataClient = createAdminClient() ?? await createClient();
-  const { data: vehicles } = await dataClient.from("vehicles").select("id, brand, model, year, plate").eq("user_id", user.id);
-  const vehicleIds = (vehicles ?? []).map(({ id }) => id);
-  const { data: orders } = vehicleIds.length
-    ? await dataClient.from("orders").select("id, vehicle_id, garage_id, status, appointment_date").in("vehicle_id", vehicleIds).order("created_at", { ascending: false })
-    : { data: [] };
-  const orderIds = (orders ?? []).map(({ id }) => id);
-  const [{ data: budgets }, { data: diagnostics }, { data: garages }, { data: brands }, { data: models }] = await Promise.all([
-    orderIds.length ? dataClient.from("budgets").select("order_id, includes_parts, total_amount, approved").in("order_id", orderIds) : Promise.resolve({ data: [] }),
-    orderIds.length ? dataClient.from("diagnostics").select("order_id, description, price").in("order_id", orderIds).order("created_at") : Promise.resolve({ data: [] }),
-    dataClient.from("garages").select("id, name, address, slug").order("name"),
-    dataClient.from("vehicle_brands").select("id, name").eq("is_active", true).order("name"),
-    dataClient.from("vehicle_models").select("id, brand_id, name").eq("is_active", true).order("name"),
-  ]);
-  const items = (orders ?? []).flatMap((order) => {
-    const budget = budgets?.find((item) => item.order_id === order.id);
-    const vehicle = vehicles?.find((item) => item.id === order.vehicle_id);
-    if (!budget || !vehicle) return [];
-    const garage = garages?.find((item) => item.id === order.garage_id);
-    return [{
-      orderId: order.id,
-      status: order.status as OrderStatus,
-      appointmentDate: order.appointment_date,
-      vehicle: `${vehicle.brand} ${vehicle.model} ${vehicle.year} · ${vehicle.plate}`,
-      garageName: garage?.name ?? "Taller",
-      garageAddress: garage?.address ?? "",
-      includesParts: budget.includes_parts,
-      totalAmount: Number(budget.total_amount),
-      approved: budget.approved,
-      diagnostics: (diagnostics ?? []).filter((item) => item.order_id === order.id).map((item) => ({ description: item.description, price: Number(item.price ?? 0) })),
-    }];
-  });
+  const { orders } = await loadClientPortal(user.id);
+  const pending = orders.filter(({ status }) => status === "presupuestado");
+  const inProgress = orders.filter(({ status }) => status !== "presupuestado" && status !== "entregado");
 
-  const appointments = (orders ?? []).flatMap((order) => {
-    const vehicle = vehicles?.find((item) => item.id === order.vehicle_id);
-    if (!vehicle) return [];
-    return [{
-      orderId: order.id,
-      status: order.status as OrderStatus,
-      appointmentDate: order.appointment_date,
-      vehicle: `${vehicle.brand} ${vehicle.model} ${vehicle.year} · ${vehicle.plate}`,
-      garageName: garages?.find((item) => item.id === order.garage_id)?.name ?? "Taller",
-    }];
-  });
+  return (
+    <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+      <PortalHero title={`Hola, ${user.fullName}`} subtitle="Tus vehículos, citas y presupuestos en un solo lugar.">
+        <HeroLink href="/dashboard/client/appointments#new" primary><CalendarDays size={19} /> Agendar cita</HeroLink>
+        <HeroLink href="/dashboard/client/vehicles">Mis vehículos</HeroLink>
+      </PortalHero>
 
-  return <ClientVehicleDashboard customerName={user.fullName} budgets={items} appointments={appointments} garages={(garages ?? []).map((garage) => ({ id: garage.id, label: garage.name }))} vehicles={(vehicles ?? []).map((vehicle) => {
-    const openStatus = (orders ?? []).find((order) => order.vehicle_id === vehicle.id && order.status !== "entregado")?.status as OrderStatus | undefined;
-    return { id: vehicle.id, label: `${vehicle.brand} ${vehicle.model} ${vehicle.year} · ${vehicle.plate}`, openOrderLabel: openStatus ? ORDER_STATUS_LABELS[openStatus] : null };
-  })} brands={(brands ?? []).map((brand) => ({ id: brand.id, name: String(brand.name) }))} models={(models ?? []).map((model) => ({ id: model.id, brandId: model.brand_id, name: String(model.name) }))} defaultGarageId={garages?.find((garage) => garage.slug === garageSlug)?.id} />;
+      <section className="py-6">
+        <SectionHeading eyebrow="Requieren acción" title="Presupuestos por decidir" count={pending.length} />
+        <div className="mt-4 grid gap-5">
+          {pending.map((order) => <OrderCard key={order.orderId} order={order} />)}
+          {!pending.length && <EmptyState>No tienes presupuestos pendientes por decidir.</EmptyState>}
+        </div>
+      </section>
+
+      <section className="border-t border-stone-200 py-6">
+        <SectionHeading eyebrow="En el taller" title="Servicios en curso" count={inProgress.length} />
+        <div className="mt-4 grid gap-5">
+          {inProgress.map((order) => <OrderCard key={order.orderId} order={order} />)}
+          {!inProgress.length && <EmptyState>No tienes vehículos en servicio ahora mismo.</EmptyState>}
+        </div>
+      </section>
+    </div>
+  );
 }

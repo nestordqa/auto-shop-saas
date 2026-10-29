@@ -225,7 +225,7 @@ export default async function OwnerOrderDetailPage({
       )}
       {status === "en_reparacion" && budget?.approved === true && (
         <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-5 font-semibold text-emerald-800">
-          Presupuesto aceptado. La orden está en reparación.
+          Presupuesto aceptado. La orden está en reparación. Puedes pasarla a prueba y volver a reparación las veces que haga falta.
         </p>
       )}
       {status === "presupuesto_rechazado" && budget?.approved === false && (
@@ -233,7 +233,7 @@ export default async function OwnerOrderDetailPage({
           El presupuesto fue rechazado.
         </p>
       )}
-      {(status === "en_reparacion" || status === "listo_para_entregar") && (
+      {(status === "en_reparacion" || status === "en_prueba" || status === "listo_para_entregar") && (
         <OrderProgressAction orderId={order.id} status={status} />
       )}
       {status === "entregado" && (

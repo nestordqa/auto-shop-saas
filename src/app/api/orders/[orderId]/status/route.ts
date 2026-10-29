@@ -4,9 +4,17 @@ import { z } from "zod";
 import { getStaffGarage } from "@/lib/auth/garage-staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { ORDER_STATUSES } from "@/types/domain";
+import { ORDER_STATUSES, type OrderStatus } from "@/types/domain";
 
 const statusSchema = z.object({ status: z.enum(ORDER_STATUSES) });
+
+/** Mirrors the mechanic rule in validate_order_transition: this route writes with the service key, so the trigger cannot see the role. */
+const MECHANIC_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
+  por_ingresar: ["ingresado"],
+  ingresado: ["diagnosticado"],
+  en_reparacion: ["en_prueba"],
+  en_prueba: ["en_reparacion", "listo_para_entregar"],
+};
 
 export async function PATCH(
   request: Request,
@@ -26,7 +34,7 @@ export async function PATCH(
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "La actualización de órdenes no está configurada." }, { status: 503 });
   const role = user.app_metadata.role;
-  const { data: order } = await admin.from("orders").select("id, garage_id, mechanic_id").eq("id", orderId).maybeSingle();
+  const { data: order } = await admin.from("orders").select("id, garage_id, mechanic_id, status").eq("id", orderId).maybeSingle();
   if (!order) return NextResponse.json({ error: "La orden no existe." }, { status: 404 });
 
   let authorized = role === "admin";
@@ -37,6 +45,9 @@ export async function PATCH(
     authorized = Boolean(mechanic);
   }
   if (!authorized) return NextResponse.json({ error: "La orden no está asignada a tu perfil o taller." }, { status: 403 });
+  if (role === "mechanic" && !MECHANIC_TRANSITIONS[order.status as OrderStatus]?.includes(parsed.data.status)) {
+    return NextResponse.json({ error: "Este cambio de estado lo realiza el taller." }, { status: 403 });
+  }
 
   if (parsed.data.status === "ingresado") {
     const { data: intake } = await admin.from("vehicle_intakes").select("id").eq("order_id", orderId).maybeSingle();

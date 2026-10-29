@@ -60,8 +60,8 @@ const navigation = {
   ],
   client: [
     { label: "Inicio", href: "/dashboard/client", icon: Gauge },
-    { label: "Vehículos", href: "/dashboard/client#vehicles", icon: CarFront },
-    { label: "Citas", href: "/dashboard/client#appointments", icon: CalendarDays },
+    { label: "Vehículos", href: "/dashboard/client/vehicles", icon: CarFront },
+    { label: "Citas", href: "/dashboard/client/appointments", icon: CalendarDays },
   ],
 } satisfies Record<AppRole, { label: string; href: string; icon: typeof Gauge }[]>;
 
@@ -75,9 +75,9 @@ type DashboardShellProps = {
 export function DashboardShell({ children, role, userName, garageContext }: DashboardShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
-  const items = role === "client" && garageContext
-    ? navigation.client.map((item) => item.label === "Citas" ? { ...item, href: `/${garageContext.slug}` } : item)
-    : navigation[role];
+  const items = navigation[role];
+  // Sections like "Vehículos" stay highlighted on their detail pages.
+  const isActive = (href: string) => pathname === href || (href.split("/").length > 3 && pathname.startsWith(`${href}/`));
   const brandName = role === "client" && garageContext ? garageContext.name : "TorkeOS";
 
   useEffect(() => {
@@ -142,7 +142,7 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
         <p className="mt-8 text-xs font-semibold uppercase text-stone-400">{roleLabels[role]}</p>
         <nav className="mt-3 grid gap-1">
           {items.map(({ label, href, icon: Icon }) => {
-            const active = pathname === href;
+            const active = isActive(href);
             return (
               <Link key={label} href={href} onClick={(event) => navigateToSection(event, href)} className={`flex min-h-12 items-center gap-3 rounded-md px-3 font-medium ${active ? "bg-white text-stone-950" : "text-stone-300 hover:bg-white/10"}`}>
                 <Icon size={20} /> {label}
@@ -170,7 +170,7 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
       <nav className="fixed inset-x-0 bottom-0 z-40 grid h-20 border-t border-stone-200 bg-white px-2 pb-[env(safe-area-inset-bottom)] md:hidden" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
         {items.map(({ label, href, icon: Icon }) => (
           <Link key={label} href={href} onClick={(event) => navigateToSection(event, href)} className="flex min-w-0 flex-col items-center justify-center gap-1 text-[11px] font-semibold text-stone-600">
-            <Icon size={22} className={pathname === href ? "text-[#ef3f26]" : ""} />
+            <Icon size={22} className={isActive(href) ? "text-[#ef3f26]" : ""} />
             <span className="max-w-full truncate">{label}</span>
           </Link>
         ))}

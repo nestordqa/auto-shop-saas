@@ -1,26 +1,28 @@
 "use client";
 
-import { Printer } from "lucide-react";
+import { FileDown } from "lucide-react";
+import { useEffect } from "react";
 
-/** Prints only the closest `[data-printable]` block (opening it first if it is a <details>). */
-export function PrintButton({ label = "Imprimir / PDF" }: { label?: string }) {
-  function print(event: React.MouseEvent<HTMLButtonElement>) {
-    const target = event.currentTarget.closest<HTMLElement>("[data-printable]");
-    if (!target) return window.print();
-    const details = target.closest("details");
-    if (details) details.open = true;
-    target.setAttribute("data-print-root", "");
-    const cleanup = () => {
-      target.removeAttribute("data-print-root");
-      window.removeEventListener("afterprint", cleanup);
-    };
-    window.addEventListener("afterprint", cleanup);
-    window.print();
-  }
+/** Waits for lazy photos so they make it into the PDF, then opens the print dialog. */
+async function printWhenReady() {
+  const images = [...document.querySelectorAll("img")];
+  images.forEach((image) => { image.loading = "eager"; });
+  await Promise.race([
+    Promise.all(images.map((image) => image.decode().catch(() => undefined))),
+    new Promise((resolve) => setTimeout(resolve, 5000)),
+  ]);
+  window.print();
+}
+
+/** Print-page button; with `auto` it also opens the dialog as soon as the page loads. */
+export function PrintButton({ label = "Descargar PDF", auto = false }: { label?: string; auto?: boolean }) {
+  useEffect(() => {
+    if (auto) void printWhenReady();
+  }, [auto]);
 
   return (
-    <button type="button" onClick={print} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-stone-300 bg-white px-3 text-sm font-bold text-stone-700 hover:bg-stone-50 print:hidden">
-      <Printer size={16} /> {label}
+    <button type="button" onClick={() => void printWhenReady()} className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#ef3f26] px-4 text-sm font-bold text-white hover:bg-[#d9341d] print:hidden">
+      <FileDown size={17} /> {label}
     </button>
   );
 }
