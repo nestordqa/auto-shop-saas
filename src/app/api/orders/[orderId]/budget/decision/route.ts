@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getStaffGarage } from "@/lib/auth/garage-staff";
+import { notifyBudgetDecision } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -39,5 +40,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
   const { error } = await admin.from("budgets").update({ approved: parsed.data.approved }).eq("order_id", order.id);
   if (error) return NextResponse.json({ error: "No se pudo registrar la decisión del presupuesto." }, { status: 409 });
 
+  notifyBudgetDecision(order.id, parsed.data.approved, { id: user.id, role });
   return NextResponse.json({ status: parsed.data.approved ? "en_reparacion" : "presupuesto_rechazado" });
 }

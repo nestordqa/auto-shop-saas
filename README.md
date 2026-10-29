@@ -30,7 +30,7 @@ Sin variables de Supabase, la aplicación entra en modo demostración. Rutas dis
 ## Supabase
 
 1. Crea un proyecto y completa `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` y `SUPABASE_SECRET_KEY`.
-2. Ejecuta en orden las migraciones de `supabase/migrations/` mediante Supabase CLI o SQL Editor. La `008` agrega un valor al enum `app_role` y debe ejecutarse **sola, antes** de la `009`. La `010` crea el bucket privado `intake-photos` de Supabase Storage. La `016` crea `order_status_history` (ver «Seguimiento de estados»). La `017` agrega el estado `en_prueba` y, como la `008`, debe ejecutarse **sola, antes** de la `018`, que permite `en_reparacion ⇄ en_prueba` y `en_prueba → listo_para_entregar`, también al mecánico asignado.
+2. Ejecuta en orden las migraciones de `supabase/migrations/` mediante Supabase CLI o SQL Editor. La `008` agrega un valor al enum `app_role` y debe ejecutarse **sola, antes** de la `009`. La `010` crea el bucket privado `intake-photos` de Supabase Storage. La `016` crea `order_status_history` (ver «Seguimiento de estados»). La `017` agrega el estado `en_prueba` y, como la `008`, debe ejecutarse **sola, antes** de la `018`, que permite `en_reparacion ⇄ en_prueba` y `en_prueba → listo_para_entregar`, también al mecánico asignado. La `019` crea las tablas de notificaciones push.
 3. Crea el primer admin con Admin API y `app_metadata.role = "admin"`.
 4. Crea owners, encargados y mechanics desde una función de servidor confiable usando Admin API. Nunca expongas `SUPABASE_SECRET_KEY` al navegador ni uses el prefijo `NEXT_PUBLIC_` para esa variable.
 
@@ -59,6 +59,38 @@ El rol del trigger se obtiene de `raw_app_meta_data`, que solo debe escribir un 
 - `public/sw.js`: service worker solo de red. **No cachea páginas autenticadas**; sin conexión sirve `public/offline.html`. Se registra solo en producción (`src/components/pwa/service-worker-register.tsx`), así que para probar la instalación usa `npm run build && npm start`.
 - `/login` muestra `InstallAppButton`: el diálogo nativo en Android/Chrome/Edge y una instrucción en iOS (Compartir → Agregar a inicio).
 - La sesión persiste con las cookies de `@supabase/ssr`, renovadas por `src/proxy.ts`. Solo expira si se configura un límite en Supabase Auth → Sessions.
+
+## Notificaciones push
+
+**Configuración**
+
+1. Variables (ver `.env.example`): `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (genéralas con `npx web-push generate-vapid-keys`), `VAPID_SUBJECT` y `CRON_SECRET`. Usa las mismas claves VAPID en todos los entornos: si cambian, todas las suscripciones existentes dejan de funcionar.
+2. Migración `019`: `push_subscriptions` (una fila por dispositivo) y `notification_log` (recordatorios ya enviados). Ambas tienen RLS sin políticas: solo el servidor las lee y escribe.
+3. Programa `GET /api/cron/notifications` **cada 15 minutos** con la cabecera `Authorization: Bearer $CRON_SECRET`. Con Supabase (extensiones `pg_cron` y `pg_net`):
+
+```sql
+select cron.schedule('torkeos-notifications', '*/15 * * * *', $$
+  select net.http_get(
+    url := 'https://TU-DOMINIO/api/cron/notifications',
+    headers := jsonb_build_object('Authorization', 'Bearer TU_CRON_SECRET')
+  );
+$$);
+```
+
+En Vercel, un cron cada 15 minutos requiere plan Pro (`vercel.json` → `crons`, que envía `CRON_SECRET` automáticamente).
+
+**Cómo funciona**
+
+- `src/lib/notifications.ts` concentra **qué se envía y a quién**. Las rutas de la API llaman a `notifyAppointmentCreated`, `notifyMechanicAssigned`, `notifyStatusChange` y `notifyBudgetDecision` después de un cambio exitoso; el envío corre con `after()` y nunca hace fallar la acción.
+- Destinatarios, calculados en el momento del envío:
+  - **Mecánico:** solo al asignarle un vehículo, y solo si sigue activo, asignado y en el taller de la orden.
+  - **Dueño + encargados activos del taller de la orden:** cita agendada, vehículo ingresado, decisión del cliente sobre el presupuesto, y diagnóstico finalizado / en prueba / listo para entregar *cuando lo hace el mecánico*.
+  - **Cliente:** solo de sus propios vehículos: ingresado, diagnosticado, presupuesto listo, en reparación, en prueba, listo para entregar y los recordatorios.
+  - **Quien hace la acción nunca recibe su propio aviso.**
+- Recordatorios (`sendScheduledReminders`): 1 hora antes de la cita (llega entre 45 y 60 minutos antes) y, a diario a las 10:00 (hora de Caracas), presupuesto sin decidir y vehículo sin retirar. `notification_log` garantiza un envío por orden, tipo y día.
+- Un dispositivo pertenece a quien tiene la sesión abierta: al iniciar sesión la suscripción se reasigna (`endpoint` único), y al cerrar sesión se borra (`unsubscribeFromPush` en `dashboard-shell.tsx`).
+- `public/sw.js` muestra la notificación y, al tocarla, abre la página de la orden. **El sonido propio** (`public/sounds/notification.wav`) solo suena con la app abierta: ningún navegador permite un sonido personalizado en notificaciones push, con la app cerrada suena el tono del sistema.
+- Compatibilidad: Chrome, Edge, Firefox y Safari en Mac. En iPhone/iPad (iOS 16.4+) solo con la app instalada en la pantalla de inicio.
 
 ## Estructura
 

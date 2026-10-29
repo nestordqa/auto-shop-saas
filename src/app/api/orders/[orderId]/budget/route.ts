@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getStaffGarage } from "@/lib/auth/garage-staff";
+import { notifyStatusChange } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import type { OrderStatus } from "@/types/domain";
 
 const budgetSchema = z.object({
   includesParts: z.boolean(),
@@ -35,7 +37,7 @@ export async function PUT(
   if (!["admin", "garage_owner", "garage_manager"].includes(role)) {
     return NextResponse.json({ error: "Solo el taller o un admin puede guardar presupuestos." }, { status: 403 });
   }
-  const { data: order } = await admin.from("orders").select("id, garage_id").eq("id", orderId).maybeSingle();
+  const { data: order } = await admin.from("orders").select("id, garage_id, status").eq("id", orderId).maybeSingle();
   if (!order) return NextResponse.json({ error: "La orden no existe." }, { status: 404 });
   if (role !== "admin") {
     if ((await getStaffGarage(admin, user))?.garageId !== order.garage_id) return NextResponse.json({ error: "La orden no pertenece a tu taller." }, { status: 403 });
@@ -72,6 +74,8 @@ export async function PUT(
   if (statusError) {
     return NextResponse.json({ error: "El cambio de estado no respeta el ciclo de la orden." }, { status: 409 });
   }
+
+  notifyStatusChange(orderId, order.status as OrderStatus, "presupuestado", { id: user.id, role });
 
   const { data: budget } = await admin
     .from("budgets")

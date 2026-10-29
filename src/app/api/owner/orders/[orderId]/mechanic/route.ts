@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authorizeStaffRequest } from "@/lib/auth/garage-staff";
+import { notifyMechanicAssigned } from "@/lib/notifications";
 
 const assignmentSchema = z.object({ mechanicId: z.uuid().nullable() });
 
@@ -14,7 +15,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
   if (!auth.ok) return auth.response;
   const { admin } = auth;
   const garage = { id: auth.staff.garageId };
-  const { data: order } = await admin.from("orders").select("id, status").eq("id", orderId).eq("garage_id", garage.id).maybeSingle();
+  const { data: order } = await admin.from("orders").select("id, status, mechanic_id").eq("id", orderId).eq("garage_id", garage.id).maybeSingle();
   if (!order) return NextResponse.json({ error: "La orden no pertenece a tu taller." }, { status: 404 });
   if (order.status === "entregado") return NextResponse.json({ error: "No se puede modificar una orden entregada." }, { status: 409 });
 
@@ -25,5 +26,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
 
   const { error } = await admin.from("orders").update({ mechanic_id: parsed.data.mechanicId }).eq("id", order.id);
   if (error) return NextResponse.json({ error: "No se pudo actualizar la asignación." }, { status: 400 });
+  // Only the newly assigned mechanic is notified; re-saving the same assignment sends nothing.
+  if (parsed.data.mechanicId && parsed.data.mechanicId !== order.mechanic_id) {
+    notifyMechanicAssigned(order.id, parsed.data.mechanicId, { id: auth.user.id, role: auth.staff.role });
+  }
   return NextResponse.json({ success: true });
 }

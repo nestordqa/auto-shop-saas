@@ -21,6 +21,8 @@ import { useEffect, useState } from "react";
 
 import { TorkeMark } from "@/components/brand/torke-logo";
 import { LiveRefresh } from "@/components/layout/live-refresh";
+import { NotificationSettings } from "@/components/pwa/notification-settings";
+import { unsubscribeFromPush } from "@/lib/push-client";
 import type { AppRole } from "@/types/domain";
 
 const DOCS_HREF = "/docs/torkeos-manual.pdf";
@@ -101,6 +103,14 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
     setMenuOpen(false);
   }
 
+  // A shared device must stop receiving this user's notifications once they sign out.
+  async function logout(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    await unsubscribeFromPush();
+    form.submit();
+  }
+
   return (
     <div className="min-h-dvh bg-stone-100 text-stone-950">
       <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-stone-200 bg-white/95 px-4 backdrop-blur md:hidden">
@@ -126,7 +136,8 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
           <a href={DOCS_HREF} download className="mt-2 flex min-h-12 items-center gap-3 rounded-md bg-stone-100 px-4 font-semibold">
             <FileDown size={20} /> Documentación (PDF)
           </a>
-          <form action="/api/auth/logout" method="post" className="mt-3 border-t border-stone-200 pt-3">
+          <div className="mt-3 border-t border-stone-200 pt-3"><NotificationSettings tone="light" /></div>
+          <form action="/api/auth/logout" method="post" onSubmit={logout} className="mt-2">
             <button type="submit" className="flex min-h-12 w-full items-center gap-3 rounded-md px-4 font-semibold text-red-700 hover:bg-red-50">
               <LogOut size={20} /> Cerrar sesión
             </button>
@@ -156,7 +167,8 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
         <div className="mt-auto border-t border-stone-700 pt-4">
           <p className="truncate font-semibold">{userName}</p>
           <div className="mt-1 flex items-center gap-2 text-sm text-stone-400"><Settings size={15} /> Configuración</div>
-          <form action="/api/auth/logout" method="post" className="mt-3">
+          <div className="mt-2"><NotificationSettings /></div>
+          <form action="/api/auth/logout" method="post" onSubmit={logout} className="mt-1">
             <button type="submit" className="flex min-h-11 w-full items-center gap-2 rounded-md text-sm font-semibold text-red-300 hover:bg-white/10 hover:px-3 hover:text-red-200">
               <LogOut size={17} /> Cerrar sesión
             </button>

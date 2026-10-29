@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getAuthorizedDiagnosticOrder } from "@/lib/auth/diagnostic-order-access";
 import { intakePhotoPrefix, intakeSchema } from "@/lib/intake";
+import { notifyStatusChange } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -58,5 +59,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ ord
     return NextResponse.json({ error: "No se pudo ingresar el vehículo." }, { status: 409 });
   }
 
+  notifyStatusChange(order.id, "por_ingresar", "ingresado", { id: user.id, role: user.app_metadata.role });
   return NextResponse.json({ status: "ingresado" }, { status: 201 });
 }

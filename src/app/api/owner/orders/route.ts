@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authorizeStaffRequest } from "@/lib/auth/garage-staff";
+import { notifyAppointmentCreated, notifyMechanicAssigned } from "@/lib/notifications";
 import { getOpenOrderForVehicle, openOrderMessage } from "@/lib/order-status";
 
 const clientSchema = z.discriminatedUnion("mode", [
@@ -152,5 +153,8 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ error: "No se pudo crear la orden." }, { status: 400 });
   }
+  const actor = { id: auth.user.id, role: auth.staff.role };
+  notifyAppointmentCreated(order.id, actor);
+  if (input.mechanicId) notifyMechanicAssigned(order.id, input.mechanicId, actor);
   return NextResponse.json({ orderId: order.id }, { status: 201 });
 }

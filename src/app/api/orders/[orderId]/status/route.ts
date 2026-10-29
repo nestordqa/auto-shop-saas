@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getStaffGarage } from "@/lib/auth/garage-staff";
+import { notifyStatusChange } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { ORDER_STATUSES, type OrderStatus } from "@/types/domain";
@@ -71,5 +72,6 @@ export async function PATCH(
     );
   }
 
+  notifyStatusChange(orderId, order.status as OrderStatus, parsed.data.status, { id: user.id, role });
   return NextResponse.json({ status: parsed.data.status });
 }

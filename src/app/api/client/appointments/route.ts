@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { appointmentIso } from "@/lib/appointments";
+import { notifyAppointmentCreated } from "@/lib/notifications";
 import { getOpenOrderForVehicle, openOrderMessage } from "@/lib/order-status";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -38,5 +39,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: raced ? openOrderMessage(raced.status) : "Ese horario acaba de ser reservado. Selecciona otro." }, { status: 409 });
   }
   if (error || !order) return NextResponse.json({ error: "No se pudo agendar la cita." }, { status: 400 });
+  notifyAppointmentCreated(order.id, { id: user.id, role: "client" });
   return NextResponse.json({ orderId: order.id }, { status: 201 });
 }
