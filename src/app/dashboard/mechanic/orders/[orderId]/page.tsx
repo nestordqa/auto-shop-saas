@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { VehicleHistoryPanel } from "@/components/history/vehicle-history-panel";
 import { IntakeSummary } from "@/components/intake/intake-summary";
 import { VehicleIntakeForm } from "@/components/intake/vehicle-intake-form";
+import { DiagnosticReport } from "@/components/orders/diagnostic-report";
 import { MechanicDiagnosticForm } from "@/components/orders/mechanic-diagnostic-form";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderProgressAction } from "@/components/owner/order-progress-action";
@@ -12,7 +13,6 @@ import { requireMechanic } from "@/lib/auth/require-mechanic";
 import { getOrderIntake } from "@/lib/intake-data";
 import { isStorageConfigured } from "@/lib/storage/intake-photos";
 import { getVehicleHistory } from "@/lib/vehicle-history";
-import { componentLabel, interventionLabel } from "@/lib/vehicle-systems";
 import type { Diagnostic, OrderStatus } from "@/types/domain";
 
 export default async function MechanicOrderPage({ params }: { params: Promise<{ orderId: string }> }) {
@@ -55,7 +55,11 @@ export default async function MechanicOrderPage({ params }: { params: Promise<{ 
       {status !== "por_ingresar" && <VehicleHistoryPanel history={history} currentMileage={intake?.mileage} />}
       <div className="mt-4">
         {status === "ingresado" && <MechanicDiagnosticForm orderId={order.id} initialStatus={status} initialDiagnostics={diagnostics} />}
-        {status === "diagnosticado" && <ReadOnlyDiagnostics diagnostics={diagnostics} />}
+        {status !== "por_ingresar" && status !== "ingresado" && (
+          <div className="mb-4">
+            <DiagnosticReport diagnostics={diagnostics} subtitle={status === "diagnosticado" ? "Diagnóstico finalizado. El taller debe cargar el presupuesto." : undefined} />
+          </div>
+        )}
         {(status === "en_reparacion" || status === "en_prueba") && (
           <>
             <p className="mb-3 rounded-lg border border-stone-200 bg-white p-5 text-stone-600">
@@ -64,28 +68,8 @@ export default async function MechanicOrderPage({ params }: { params: Promise<{ 
             <OrderProgressAction orderId={order.id} status={status} mechanic />
           </>
         )}
-        {!(["por_ingresar", "ingresado", "diagnosticado", "en_reparacion", "en_prueba"] as OrderStatus[]).includes(status) && <p className="rounded-lg border border-stone-200 bg-white p-5 text-stone-600">El diagnóstico ya finalizó. El taller gestiona el presupuesto y los siguientes estados.</p>}
+        {(["presupuestado", "presupuesto_rechazado", "listo_para_entregar", "entregado"] as OrderStatus[]).includes(status) && <p className="rounded-lg border border-stone-200 bg-white p-5 text-stone-600">El taller gestiona el presupuesto y la entrega de este vehículo.</p>}
       </div>
     </div>
-  );
-}
-
-function ReadOnlyDiagnostics({ diagnostics }: { diagnostics: Diagnostic[] }) {
-  return (
-    <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-      <div className="border-b border-stone-200 p-5"><h2 className="text-xl font-bold">Diagnóstico finalizado</h2><p className="mt-1 text-sm text-stone-500">El taller debe cargar el presupuesto.</p></div>
-      <div className="divide-y divide-stone-100">
-        {diagnostics.map((item) => (
-          <div key={item.id} className="p-4">
-            <p className="font-semibold">{item.description}</p>
-            <p className="mt-1 flex flex-wrap gap-1.5 text-xs text-stone-500">
-              {item.component && <span className="rounded bg-stone-900 px-1.5 py-0.5 font-bold text-white">{componentLabel(item.component)} · {interventionLabel(item.interventionType)}</span>}
-              {item.isCompleted ? "Completado" : "Pendiente"}
-            </p>
-          </div>
-        ))}
-      </div>
-      {!diagnostics.length && <p className="p-5 text-stone-500">No se registraron hallazgos.</p>}
-    </section>
   );
 }

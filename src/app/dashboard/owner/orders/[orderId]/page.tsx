@@ -6,6 +6,7 @@ import { VehicleHistoryPanel } from "@/components/history/vehicle-history-panel"
 import { IntakeSummary } from "@/components/intake/intake-summary";
 import { VehicleIntakeForm } from "@/components/intake/vehicle-intake-form";
 import { BudgetDecisionActions } from "@/components/orders/budget-decision-actions";
+import { DiagnosticReport } from "@/components/orders/diagnostic-report";
 import { MechanicDiagnosticForm } from "@/components/orders/mechanic-diagnostic-form";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OwnerBudgetEditor } from "@/components/orders/owner-budget-editor";
@@ -70,7 +71,7 @@ export default async function OwnerOrderDetailPage({
       .order("created_at"),
     dataClient
       .from("budgets")
-      .select("includes_parts, approved")
+      .select("includes_parts, approved, total_amount")
       .eq("order_id", order.id)
       .maybeSingle(),
     order.mechanic_id
@@ -222,6 +223,13 @@ export default async function OwnerOrderDetailPage({
           </p>
           <BudgetDecisionActions orderId={order.id} />
         </section>
+      )}
+      {/* After the budget decision the editor is gone; keep the full diagnosis and prices visible. */}
+      {(status === "en_reparacion" || status === "en_prueba" || status === "listo_para_entregar" || status === "entregado") && (
+        <DiagnosticReport
+          diagnostics={diagnostics}
+          budget={budget ? { includesParts: budget.includes_parts, totalAmount: Number(budget.total_amount ?? 0), approved: budget.approved } : null}
+        />
       )}
       {status === "en_reparacion" && budget?.approved === true && (
         <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-5 font-semibold text-emerald-800">
