@@ -1,9 +1,10 @@
 import { Check, ClipboardCheck, FileDown, FileText, Fuel, Gauge, ShieldCheck, X } from "lucide-react";
 
+import { formatAppointmentDateTime } from "@/lib/appointments";
 import { CarDiagram } from "@/components/intake/car-diagram";
 import { CAR_VIEWS, DAMAGE_TYPE_BY_KEY, FUEL_LABELS, type VehicleIntake } from "@/lib/intake";
 
-const dateTime = new Intl.DateTimeFormat("es-VE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Caracas" });
+const dateTime = { format: (value: Date) => formatAppointmentDateTime(value, "medium") };
 
 type IntakeSummaryProps = {
   intake: VehicleIntake;

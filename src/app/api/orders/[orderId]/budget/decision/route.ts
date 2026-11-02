@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getStaffGarage } from "@/lib/auth/garage-staff";
+import { getStaffGarage, staffCanAccessOrder } from "@/lib/auth/garage-staff";
+import { getGarageBillingStatus } from "@/lib/billing-status";
 import { notifyBudgetDecision } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -21,7 +22,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
 
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "La gestión de presupuestos no está configurada." }, { status: 503 });
-  const { data: order } = await admin.from("orders").select("id, garage_id, vehicle_id, status").eq("id", orderId).maybeSingle();
+  const { data: order } = await admin.from("orders").select("id, garage_id, branch_id, vehicle_id, status").eq("id", orderId).maybeSingle();
   if (!order) return NextResponse.json({ error: "La orden no existe." }, { status: 404 });
   if (order.status !== "presupuestado") {
     return NextResponse.json({ error: "Este presupuesto ya fue decidido o no está publicado." }, { status: 409 });
@@ -30,12 +31,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
   const role = user.app_metadata.role;
   let authorized = role === "admin";
   if (role === "garage_owner" || role === "garage_manager") {
-    authorized = (await getStaffGarage(admin, user))?.garageId === order.garage_id;
+    authorized = staffCanAccessOrder(await getStaffGarage(admin, user), order);
   } else if (role === "client") {
     const { data: vehicle } = await admin.from("vehicles").select("id").eq("id", order.vehicle_id).eq("user_id", user.id).maybeSingle();
     authorized = Boolean(vehicle);
   }
   if (!authorized) return NextResponse.json({ error: "No puedes decidir este presupuesto." }, { status: 403 });
+  // Staff and mechanics of a garage suspended for arrears cannot work on its orders (clients still can).
+  if (role !== "admin" && role !== "client" && (await getGarageBillingStatus(order.garage_id)).locked) return NextResponse.json({ error: "El acceso del taller está suspendido por falta de pago." }, { status: 402 });
 
   const { error } = await admin.from("budgets").update({ approved: parsed.data.approved }).eq("order_id", order.id);
   if (error) return NextResponse.json({ error: "No se pudo registrar la decisión del presupuesto." }, { status: 409 });

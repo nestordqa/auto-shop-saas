@@ -2,10 +2,11 @@ import { RotateCcw, Search } from "lucide-react";
 import Link from "next/link";
 
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
+import { BranchTabs } from "@/components/owner/branch-tabs";
 import { OrderCreateFlowModal } from "@/components/owner/order-create-flow-modal";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { formatAppointmentDateTime } from "@/lib/appointments";
-import { requireOwnerGarage } from "@/lib/auth/require-owner-garage";
+import { branchScope, requireOwnerGarage } from "@/lib/auth/require-owner-garage";
 import {
   MECHANIC_SPECIALTY_LABELS,
   type MechanicSpecialty,
@@ -19,11 +20,13 @@ const pageSize = 10;
 export default async function OwnerOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; page?: string; branch?: string }>;
 }) {
-  const { garage, dataClient, user } = await requireOwnerGarage();
-  const { q = "", status = "all", page = "1" } = await searchParams;
+  const { garage, dataClient, user, branches, staffBranchId } = await requireOwnerGarage();
+  const { q = "", status = "all", page = "1", branch } = await searchParams;
   if (!garage) return <MissingGarage email={user.email} />;
+  const { multiBranch, branchId, branchById } = branchScope(branches, staffBranchId, branch);
+  const bookableBranches = branches.filter((item) => item.is_active && (!staffBranchId || item.id === staffBranchId)).map((item) => ({ id: item.id, name: item.name, schedule: item.schedule }));
   const [
     { rows },
     { data: vehicles },
@@ -33,14 +36,14 @@ export default async function OwnerOrdersPage({
     { data: models },
     openOrders,
   ] = await Promise.all([
-    getOwnerOrders(dataClient, garage.id),
+    getOwnerOrders(dataClient, garage.id, branchId),
     dataClient
       .from("vehicles")
       .select("id, user_id, brand, model, year, plate")
       .order("plate"),
     dataClient
       .from("mechanics")
-      .select("id, profile_id, specialty")
+      .select("id, profile_id, specialty, branch_id")
       .eq("garage_id", garage.id)
       .eq("is_active", true),
     dataClient
@@ -86,6 +89,7 @@ export default async function OwnerOrdersPage({
     name: optionProfileById.get(mechanic.profile_id) ?? "Mecánico",
     specialty:
       MECHANIC_SPECIALTY_LABELS[mechanic.specialty as MechanicSpecialty],
+    branchId: mechanic.branch_id as string,
   }));
   const brandOptions = (brands ?? []).map((brand) => ({
     id: brand.id,
@@ -137,8 +141,10 @@ export default async function OwnerOrdersPage({
           brands={brandOptions}
           models={modelOptions}
           mechanics={mechanicOptions}
+          branches={bookableBranches}
         />
       </header>
+      {multiBranch && <BranchTabs branches={branches} current={branchId} href={(id) => `/dashboard/owner/orders${id ? `?branch=${id}` : ""}`} />}
       <form className="mt-6 grid gap-2 rounded-lg border border-stone-200 bg-white p-3 sm:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
         <div className="relative">
           <Search
@@ -152,6 +158,7 @@ export default async function OwnerOrdersPage({
             className="min-h-12 w-full rounded-md border border-stone-300 pl-10 pr-4"
           />
         </div>
+        {branchId && !staffBranchId && <input type="hidden" name="branch" value={branchId} />}
         <select
           name="status"
           defaultValue={status}
@@ -198,7 +205,7 @@ export default async function OwnerOrdersPage({
                       {order.plate} · {order.id.slice(0, 8).toUpperCase()}
                     </p>
                   </td>
-                  <td className="p-4">{order.customer}</td>
+                  <td className="p-4">{order.customer}{multiBranch && !branchId && <p className="text-xs text-stone-500">{branchById.get(order.branchId)?.name}</p>}</td>
                   <td className="p-4">
                     {formatAppointmentDateTime(order.appointmentDate)}
                   </td>
@@ -231,6 +238,7 @@ export default async function OwnerOrdersPage({
           searchParams={{
             ...(q && { q }),
             ...(status !== "all" && { status }),
+            ...(branchId && !staffBranchId && { branch: branchId }),
           }}
           totalItems={filtered.length}
         />

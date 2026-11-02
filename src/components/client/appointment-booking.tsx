@@ -4,8 +4,12 @@ import { CalendarSearch, CheckCircle2, LoaderCircle, MapPin, Plus, Wrench, X } f
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { formatSlotTime } from "@/lib/schedule";
+
 type Option = { id: string; label: string };
-type GarageOption = Option & { address?: string | null; specialty?: string | null };
+type BranchOption = { id: string; name: string; address: string };
+/** `branches` are the active branches (main first); with more than one the client picks where to book. */
+type GarageOption = Option & { address?: string | null; specialty?: string | null; branches?: BranchOption[] };
 /** `openOrderLabel` marks a vehicle that already has an order in progress and cannot book another. */
 type VehicleOption = Option & { openOrderLabel?: string | null };
 
@@ -15,9 +19,11 @@ type AppointmentBookingProps = {
   /** Garage of the garage link page. With this or `defaultGarageId` (client who came from a garage link) the garage is shown with "Ver más talleres"; otherwise a plain select. */
   lockedGarageId?: string;
   defaultGarageId?: string;
+  /** Preselected branch (garage link with `?sucursal=`). */
+  defaultBranchId?: string;
 };
 
-export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultGarageId }: AppointmentBookingProps) {
+export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultGarageId, defaultBranchId }: AppointmentBookingProps) {
   const router = useRouter();
   const [slots, setSlots] = useState<string[]>([]);
   const [selectedTime, setSelectedTime] = useState("");
@@ -27,6 +33,7 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
   const today = new Date().toLocaleDateString("en-CA");
   const [garageId, setGarageId] = useState(lockedGarageId ?? defaultGarageId ?? "");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [branchId, setBranchId] = useState(defaultBranchId ?? "");
 
   async function loadSlots(form: HTMLFormElement) {
     const data = new FormData(form);
@@ -36,12 +43,14 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
     setLoading(true);
     setSelectedTime("");
     setMessage({});
-    const params = new URLSearchParams({ garageId, date, timezoneOffset: String(new Date().getTimezoneOffset()) });
+    const params = new URLSearchParams({ garageId, date, timezoneOffset: String(new Date().getTimezoneOffset()), ...(selectedBranch && { branchId: selectedBranch.id }) });
     const response = await fetch(`/api/client/appointments/availability?${params}`);
-    const result = await response.json() as { slots?: string[]; error?: string };
+    const result = await response.json() as { slots?: string[]; closed?: boolean; error?: string };
     setLoading(false);
     setSlots(result.slots ?? []);
     if (!response.ok) setMessage({ error: result.error ?? "No se pudo consultar la agenda." });
+    else if (result.closed) setMessage({ error: "Ese día el taller no atiende. Elige otra fecha." });
+    else if (!result.slots?.length) setMessage({ error: "No quedan horarios libres ese día. Elige otra fecha." });
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -54,7 +63,7 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
     const response = await fetch("/api/client/appointments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ garageId: data.get("garageId"), vehicleId: data.get("vehicleId"), date: data.get("date"), time: selectedTime, timezoneOffset: new Date().getTimezoneOffset() }),
+      body: JSON.stringify({ garageId: data.get("garageId"), branchId: selectedBranch?.id, vehicleId: data.get("vehicleId"), date: data.get("date"), time: selectedTime, timezoneOffset: new Date().getTimezoneOffset() }),
     });
     const result = await response.json() as { error?: string };
     setSaving(false);
@@ -70,10 +79,13 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
   }
 
   const garage = garages.find(({ id }) => id === garageId);
+  const branches = garage?.branches ?? [];
+  const selectedBranch = branches.find(({ id }) => id === branchId) ?? branches[0];
   const otherGarages = garages.filter(({ id }) => id !== garageId);
 
   function chooseGarage(id: string) {
     setGarageId(id);
+    setBranchId("");
     setPickerOpen(false);
     setSlots([]);
     setSelectedTime("");
@@ -100,13 +112,18 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
             <select value={garageId} onChange={(event) => chooseGarage(event.target.value)} className="min-h-12 w-full min-w-0 truncate rounded-md border border-stone-300 bg-white px-3 font-normal" required><option value="">Seleccionar</option>{garages.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select>
           )}
         </div>
+        {branches.length > 1 && (
+          <label className="grid min-w-0 content-start gap-2 text-sm font-bold md:col-span-3">Sucursal
+            <select value={selectedBranch?.id} onChange={(event) => { setBranchId(event.target.value); setSlots([]); setSelectedTime(""); }} className="min-h-12 w-full min-w-0 truncate rounded-md border border-stone-300 bg-white px-3 font-normal">{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name} · {branch.address}</option>)}</select>
+          </label>
+        )}
         <label className="grid min-w-0 content-start gap-2 text-sm font-bold">Vehículo<select name="vehicleId" className="min-h-12 w-full min-w-0 truncate rounded-md border border-stone-300 bg-white px-3" required><option value="">Seleccionar</option>{vehicles.map((item) => <option key={item.id} value={item.id} disabled={Boolean(item.openOrderLabel)}>{item.label}{item.openOrderLabel ? ` · En servicio: ${item.openOrderLabel}` : ""}</option>)}</select></label>
         <label className="grid min-w-0 content-start gap-2 text-sm font-bold">Fecha<input name="date" type="date" min={today} className="min-h-12 w-full min-w-0 rounded-md border border-stone-300 px-3" required /></label>
         {vehicles.some((item) => item.openOrderLabel) && <p className="-mt-1 text-xs text-stone-500 md:col-span-3">Los vehículos con un servicio en curso podrán agendar de nuevo cuando se entreguen.</p>}
         <button type="button" disabled={loading} onClick={(event) => loadSlots(event.currentTarget.form!)} className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-stone-900 px-5 font-bold text-white disabled:opacity-60 md:col-span-3">{loading ? <LoaderCircle className="animate-spin" size={19} /> : <CalendarSearch size={19} />} Consultar horarios</button>
       </div>
-      {slots.length > 0 && <fieldset className="border-t border-stone-200 p-5"><legend className="px-2 text-sm font-bold">Horarios disponibles</legend><div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-7">{slots.map((time) => <button key={time} type="button" onClick={() => setSelectedTime(time)} className={`min-h-11 rounded-md border text-sm font-bold ${selectedTime === time ? "border-[#ef3f26] bg-[#ef3f26] text-white" : "border-stone-300 bg-white"}`}>{time}</button>)}</div><button disabled={saving || !selectedTime} className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-[#ef3f26] px-5 font-bold text-white disabled:opacity-60">{saving ? <LoaderCircle className="animate-spin" size={19} /> : <CheckCircle2 size={19} />} Confirmar cita</button></fieldset>}
-      {!loading && slots.length === 0 && selectedTime === "" && <p className="border-t border-stone-200 p-5 text-sm text-stone-500">Consulta una fecha para ver los slots de 08:00 a 18:00.</p>}
+      {slots.length > 0 && <fieldset className="border-t border-stone-200 p-5"><legend className="px-2 text-sm font-bold">Horarios disponibles</legend><div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-7">{slots.map((time) => <button key={time} type="button" onClick={() => setSelectedTime(time)} className={`min-h-11 rounded-md border text-sm font-bold ${selectedTime === time ? "border-[#ef3f26] bg-[#ef3f26] text-white" : "border-stone-300 bg-white"}`}>{formatSlotTime(time)}</button>)}</div><button disabled={saving || !selectedTime} className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-[#ef3f26] px-5 font-bold text-white disabled:opacity-60">{saving ? <LoaderCircle className="animate-spin" size={19} /> : <CheckCircle2 size={19} />} Confirmar cita</button></fieldset>}
+      {!loading && slots.length === 0 && selectedTime === "" && <p className="border-t border-stone-200 p-5 text-sm text-stone-500">Consulta una fecha para ver los horarios disponibles.</p>}
       {message.error && <p role="alert" className="border-t border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{message.error}</p>}
       {message.success && <p role="status" className="border-t border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">{message.success}</p>}
       {pickerOpen && (

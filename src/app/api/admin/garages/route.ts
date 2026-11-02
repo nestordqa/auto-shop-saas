@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { PLAN_KEYS } from "@/lib/plans";
 import { phoneSchema } from "@/lib/phone";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { toUrlSlug } from "@/lib/slugs";
+import { MECHANIC_SPECIALTY_LABELS } from "@/lib/mechanics";
 
 const garageSchema = z.discriminatedUnion("ownerMode", [
   z.object({
@@ -14,6 +16,8 @@ const garageSchema = z.discriminatedUnion("ownerMode", [
     address: z.string().trim().min(5).max(300),
     mapLocation: z.string().trim().max(500).optional(),
     specialty: z.string().trim().max(120).optional(),
+    plan: z.enum(PLAN_KEYS).default("bujia"),
+    prospectId: z.union([z.literal(""), z.uuid()]).optional(),
   }),
   z.object({
     ownerMode: z.literal("new"),
@@ -26,6 +30,8 @@ const garageSchema = z.discriminatedUnion("ownerMode", [
     address: z.string().trim().min(5).max(300),
     mapLocation: z.string().trim().max(500).optional(),
     specialty: z.string().trim().max(120).optional(),
+    plan: z.enum(PLAN_KEYS).default("bujia"),
+    prospectId: z.union([z.literal(""), z.uuid()]).optional(),
   }),
 ]);
 
@@ -83,19 +89,23 @@ export async function POST(request: Request) {
   let slug = baseSlug;
   let suffix = 2;
   while (usedSlugs.has(slug)) slug = `${baseSlug}-${suffix++}`;
-  const { error: garageError } = await admin.from("garages").insert({
+  const { data: garage, error: garageError } = await admin.from("garages").insert({
     name: input.name,
     slug,
     address: input.address,
     map_location: input.mapLocation || null,
-    specialty: input.specialty || null,
+    specialty: input.specialty || MECHANIC_SPECIALTY_LABELS.general,
+    plan: input.plan,
     owner_id: ownerId,
-  });
+  }).select("id").single();
 
   if (garageError) {
     if (createdAuthUser) await admin.auth.admin.deleteUser(ownerId);
     return NextResponse.json({ error: garageError.code === "23505" ? "Ese owner ya tiene un taller." : "No se pudo crear el taller." }, { status: 409 });
   }
+
+  // Created from a prospect: close it as won and link it to the new garage.
+  if (input.prospectId && garage) await admin.from("garage_prospects").update({ status: "won", garage_id: garage.id, next_follow_up: null }).eq("id", input.prospectId);
 
   const { data: ownerProfile } = await admin.from("profiles").select("phone").eq("id", ownerId).maybeSingle();
   return NextResponse.json({ success: true, garage: { name: input.name, slug, ownerPhone: ownerProfile?.phone ?? null } }, { status: 201 });

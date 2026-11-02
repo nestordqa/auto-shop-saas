@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { phoneSchema } from "@/lib/phone";
 import { MECHANIC_SPECIALTIES } from "@/lib/mechanics";
-import { authorizeStaffRequest } from "@/lib/auth/garage-staff";
+import { authorizeStaffRequest, resolveStaffBranch } from "@/lib/auth/garage-staff";
 
 const mechanicSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
@@ -12,6 +12,7 @@ const mechanicSchema = z.object({
   documentId: z.string().trim().min(4).max(30),
   temporaryPassword: z.string().min(8).max(72),
   specialty: z.enum(MECHANIC_SPECIALTIES),
+  branchId: z.uuid().optional(),
 });
 
 export async function POST(request: Request) {
@@ -24,6 +25,8 @@ export async function POST(request: Request) {
   const garage = { id: auth.staff.garageId };
 
   const input = parsed.data;
+  const branchId = await resolveStaffBranch(admin, auth.staff, input.branchId);
+  if (!branchId) return NextResponse.json({ error: "La sucursal seleccionada no es válida." }, { status: 400 });
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
     email: input.email,
     password: input.temporaryPassword,
@@ -48,6 +51,7 @@ export async function POST(request: Request) {
   const { error: mechanicError } = await admin.from("mechanics").insert({
     profile_id: profileId,
     garage_id: garage.id,
+    branch_id: branchId,
     specialty: input.specialty,
   });
   if (mechanicError) {

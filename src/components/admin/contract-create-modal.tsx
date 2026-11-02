@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { addDays, CYCLE_LABELS, formatDate, TRIAL_DAYS, type BillingCycle, type ContractKind } from "@/lib/contracts";
+import { PLAN_KEYS, PLANS, planSummary, type PlanKey } from "@/lib/plans";
 
-type GarageOption = { id: string; name: string; ownerName: string; suggestedKind: ContractKind; suggestedStart: string };
+type GarageOption = { id: string; name: string; ownerName: string; suggestedKind: ContractKind; suggestedStart: string; suggestedPlan: PlanKey };
 
-type ContractCreateModalProps = { garages: GarageOption[]; defaultCommission: number; today: string; preselectedGarageId?: string; label?: string };
+type ContractCreateModalProps = { garages: GarageOption[]; today: string; preselectedGarageId?: string; label?: string };
 
-export function ContractCreateModal({ garages, defaultCommission, today, preselectedGarageId, label = "Nuevo contrato" }: ContractCreateModalProps) {
+export function ContractCreateModal({ garages, today, preselectedGarageId, label = "Nuevo contrato" }: ContractCreateModalProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -19,6 +20,7 @@ export function ContractCreateModal({ garages, defaultCommission, today, presele
   const [garageId, setGarageId] = useState(initial?.id ?? "");
   const [kind, setKind] = useState<ContractKind>(initial?.suggestedKind ?? "trial");
   const [startDate, setStartDate] = useState(initial?.suggestedStart ?? today);
+  const [plan, setPlan] = useState<PlanKey>(initial?.suggestedPlan ?? "bujia");
   const garage = garages.find((item) => item.id === garageId);
 
   function selectGarage(id: string) {
@@ -27,6 +29,7 @@ export function ContractCreateModal({ garages, defaultCommission, today, presele
     if (selected) {
       setKind(selected.suggestedKind);
       setStartDate(selected.suggestedStart);
+      setPlan(selected.suggestedPlan);
     }
   }
 
@@ -64,7 +67,7 @@ export function ContractCreateModal({ garages, defaultCommission, today, presele
                 {(["trial", "paid"] as const).map((value) => (
                   <label key={value} className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 ${kind === value ? "border-[#ef3f26] bg-red-50/40" : "border-stone-300"}`}>
                     <input type="radio" name="kind" value={value} checked={kind === value} onChange={() => setKind(value)} className="mt-1 accent-[#ef3f26]" />
-                    <span><span className="block font-bold">{value === "trial" ? "Mes de prueba" : "Contrato de pago"}</span><span className="text-xs text-stone-600">{value === "trial" ? `${TRIAL_DAYS} días de cortesía, sin costo.` : "Comisión sobre presupuestos aceptados."}</span></span>
+                    <span><span className="block font-bold">{value === "trial" ? "Mes de prueba" : "Contrato de pago"}</span><span className="text-xs text-stone-600">{value === "trial" ? `${TRIAL_DAYS} días de cortesía, sin costo.` : "Bujía, Alternador o Pistón."}</span></span>
                   </label>
                 ))}
               </fieldset>
@@ -73,16 +76,22 @@ export function ContractCreateModal({ garages, defaultCommission, today, presele
               </label>
               {kind === "trial" && startDate && <p className="-mt-2 rounded-md bg-sky-50 p-3 text-sm text-sky-900">La prueba termina el <strong>{formatDate(addDays(startDate, TRIAL_DAYS - 1))}</strong>.</p>}
               {kind === "paid" && (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="grid gap-1 text-sm font-bold">Plan de pago
-                    <select name="billingCycle" defaultValue="monthly" className="min-h-12 rounded-md border border-stone-300 bg-white px-4 font-normal">
-                      {(Object.keys(CYCLE_LABELS) as BillingCycle[]).map((cycle) => <option key={cycle} value={cycle}>{CYCLE_LABELS[cycle]}</option>)}
-                    </select>
-                  </label>
-                  <label className="grid gap-1 text-sm font-bold">Comisión (%)
-                    <input type="number" name="commissionPercent" required min={0} max={100} step="0.01" defaultValue={defaultCommission} className="min-h-12 rounded-md border border-stone-300 px-4 font-normal" />
-                  </label>
-                </div>
+                <fieldset className="grid gap-2">
+                  <legend className="mb-1 text-sm font-bold">Plan</legend>
+                  {PLAN_KEYS.map((key) => (
+                    <label key={key} className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 text-sm ${plan === key ? "border-[#ef3f26] bg-red-50/40" : "border-stone-300"}`}>
+                      <input type="radio" name="plan" value={key} checked={plan === key} onChange={() => setPlan(key)} className="mt-1 accent-[#ef3f26]" />
+                      <span><span className="block font-bold">{PLANS[key].name} <span className="font-normal text-stone-500">· {PLANS[key].audience}</span></span><span className="text-stone-600">{planSummary(key).split(" · ").slice(1).join(" · ")}</span></span>
+                    </label>
+                  ))}
+                  {PLANS[plan].kind === "commission" ? (
+                    <label className="grid gap-1 text-sm font-bold">Ciclo de cobro
+                      <select name="billingCycle" defaultValue="monthly" className="min-h-12 rounded-md border border-stone-300 bg-white px-4 font-normal">
+                        {(Object.keys(CYCLE_LABELS) as BillingCycle[]).map((cycle) => <option key={cycle} value={cycle}>{CYCLE_LABELS[cycle]}</option>)}
+                      </select>
+                    </label>
+                  ) : <p className="text-xs text-stone-500">Los planes de suscripción se cobran cada mes.</p>}
+                </fieldset>
               )}
               <label className="grid gap-1 text-sm font-bold">Notas internas (opcional)
                 <textarea name="notes" maxLength={2000} rows={2} className="rounded-md border border-stone-300 px-4 py-3 font-normal" />

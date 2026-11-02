@@ -4,15 +4,17 @@ import { z } from "zod";
 import { appointmentIso } from "@/lib/appointments";
 import { notifyAppointmentCreated } from "@/lib/notifications";
 import { getOpenOrderForVehicle, openOrderMessage } from "@/lib/order-status";
+import { parseSchedule, scheduleSlots } from "@/lib/schedule";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getUnavailableRanges, isBlocked } from "@/lib/unavailability";
+import { getUnavailableRanges, isBlocked, resolveBookingBranch } from "@/lib/unavailability";
 
 const appointmentSchema = z.object({
   garageId: z.uuid(),
+  branchId: z.uuid().optional(),
   vehicleId: z.uuid(),
   date: z.iso.date(),
-  time: z.string().regex(/^(0[8-9]|1[0-7]):(00|30)$|^18:00$/),
+  time: z.string().regex(/^([01]\d|2[0-3]):(00|30)$/),
   timezoneOffset: z.number().int().min(-840).max(840),
 });
 
@@ -24,7 +26,7 @@ export async function POST(request: Request) {
   if (!user || user.app_metadata.role !== "client") return NextResponse.json({ error: "Acceso restringido." }, { status: 403 });
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "La agenda no está configurada." }, { status: 503 });
-  const { garageId, vehicleId, date, time, timezoneOffset } = parsed.data;
+  const { garageId, branchId: requestedBranch, vehicleId, date, time, timezoneOffset } = parsed.data;
   const appointmentDate = appointmentIso(date, time, timezoneOffset);
   if (new Date(appointmentDate).getTime() <= Date.now()) return NextResponse.json({ error: "Selecciona un horario futuro." }, { status: 400 });
   const [{ data: garage }, { data: vehicle }] = await Promise.all([
@@ -32,11 +34,15 @@ export async function POST(request: Request) {
     admin.from("vehicles").select("id").eq("id", vehicleId).eq("user_id", user.id).maybeSingle(),
   ]);
   if (!garage || !vehicle) return NextResponse.json({ error: "El taller o vehículo seleccionado no es válido." }, { status: 400 });
-  const blocked = await getUnavailableRanges(admin, garage.id, appointmentDate, appointmentDate);
+  const branchId = await resolveBookingBranch(admin, garage.id, requestedBranch);
+  if (!branchId) return NextResponse.json({ error: "La sucursal seleccionada no está disponible." }, { status: 400 });
+  const { data: branch } = await admin.from("garage_branches").select("schedule").eq("id", branchId).single();
+  if (!scheduleSlots(parseSchedule(branch?.schedule), date).includes(time)) return NextResponse.json({ error: "Ese horario está fuera del horario de atención. Selecciona otro." }, { status: 400 });
+  const blocked = await getUnavailableRanges(admin, garage.id, branchId, appointmentDate, appointmentDate);
   if (isBlocked(blocked, new Date(appointmentDate).getTime())) return NextResponse.json({ error: "El taller no está disponible en ese horario. Selecciona otro." }, { status: 409 });
   const openOrder = await getOpenOrderForVehicle(admin, vehicle.id);
   if (openOrder) return NextResponse.json({ error: openOrderMessage(openOrder.status) }, { status: 409 });
-  const { data: order, error } = await admin.from("orders").insert({ garage_id: garage.id, vehicle_id: vehicle.id, mechanic_id: null, appointment_date: appointmentDate }).select("id").single();
+  const { data: order, error } = await admin.from("orders").insert({ garage_id: garage.id, branch_id: branchId, vehicle_id: vehicle.id, mechanic_id: null, appointment_date: appointmentDate }).select("id").single();
   if (error?.code === "23505") {
     const raced = await getOpenOrderForVehicle(admin, vehicle.id);
     return NextResponse.json({ error: raced ? openOrderMessage(raced.status) : "Ese horario acaba de ser reservado. Selecciona otro." }, { status: 409 });

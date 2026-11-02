@@ -12,10 +12,14 @@ export type OwnerOrderRow = {
   customer: string;
   customerPhone: string | null;
   mechanic: string;
+  branchId: string;
 };
 
-export async function getOwnerOrders(dataClient: SupabaseClient, garageId: string) {
-  const { data: orders, error } = await dataClient.from("orders").select("id, vehicle_id, mechanic_id, status, appointment_date, created_at").eq("garage_id", garageId).order("appointment_date", { ascending: false });
+/** Orders of a garage; `branchId` narrows them to one branch. */
+export async function getOwnerOrders(dataClient: SupabaseClient, garageId: string, branchId?: string | null) {
+  let query = dataClient.from("orders").select("id, branch_id, vehicle_id, mechanic_id, status, appointment_date, created_at").eq("garage_id", garageId);
+  if (branchId) query = query.eq("branch_id", branchId);
+  const { data: orders, error } = await query.order("appointment_date", { ascending: false });
   if (error || !orders?.length) return { rows: [] as OwnerOrderRow[], error };
 
   const vehicleIds = [...new Set(orders.map((order) => order.vehicle_id))];
@@ -38,6 +42,7 @@ export async function getOwnerOrders(dataClient: SupabaseClient, garageId: strin
       const mechanic = order.mechanic_id ? mechanicById.get(order.mechanic_id) : undefined;
       return {
         id: order.id,
+        branchId: order.branch_id,
         status: order.status as OrderStatus,
         appointmentDate: order.appointment_date,
         createdAt: order.created_at,

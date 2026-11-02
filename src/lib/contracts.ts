@@ -1,5 +1,8 @@
 /** Contract periods and payment status. Dates are `YYYY-MM-DD` strings handled in UTC. */
 
+import { branchFeeForPeriod, type ExtraBranch } from "@/lib/billing-branches";
+import { planCharge, PLANS, plansComparisonLines, planSummary, type GarageOrderDate, type PlanKey } from "@/lib/plans";
+
 export type ContractKind = "trial" | "paid";
 export type BillingCycle = "weekly" | "biweekly" | "monthly";
 export type ContractStatus = "active" | "ended" | "cancelled";
@@ -11,6 +14,8 @@ export type Contract = {
   owner_id: string;
   kind: ContractKind;
   billing_cycle: BillingCycle | null;
+  /** Null on paid contracts created before plans existed (commission only). */
+  plan: PlanKey | null;
   commission_percent: number | string;
   start_date: string;
   end_date: string | null;
@@ -30,8 +35,15 @@ export type ContractPayment = { contract_id: string; period_start: string; perio
 export type AcceptedBudget = { garage_id: string; total_amount: number | string; decided_at: string };
 
 export const TRIAL_DAYS = 30;
-/** Days after a period closes before its payment is overdue. */
-export const PAYMENT_GRACE_DAYS = 5;
+/** A period is due the day it closes (its billing date) and overdue from the next day. */
+export const PAYMENT_GRACE_DAYS = 0;
+/** Days overdue after which owners, managers and mechanics lose access until the garage pays. */
+export const LOCK_AFTER_DAYS = 10;
+
+/** Whole days from `from` to `to` (YYYY-MM-DD). */
+export function daysBetween(from: string, to: string) {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+}
 
 export const CYCLE_LABELS: Record<BillingCycle, string> = { weekly: "Semanal", biweekly: "Quincenal", monthly: "Mensual" };
 export const CYCLE_DESCRIPTIONS: Record<BillingCycle, string> = { weekly: "cada 7 días", biweekly: "cada 15 días", monthly: "cada mes calendario" };
@@ -60,30 +72,60 @@ export function formatDate(date: string) {
 
 export type PeriodStatus = "paid" | "pending" | "overdue" | "open";
 
-export type ContractPeriod = { start: string; end: string; dueDate: string; base: number; amount: number; status: PeriodStatus; payment?: ContractPayment };
+/** Billing inputs loaded by `loadContractData`. */
+export type ContractBillingData = { budgets: AcceptedBudget[]; payments: ContractPayment[]; extraBranches: ExtraBranch[]; orders: GarageOrderDate[] };
+
+/**
+ * `amount` = plan charge + `branchFee`. With a plan: subscription price + extra vehicles, or Pistón's
+ * commission (never below its minimum). Contracts without a plan (before plans existed) charge the commission only.
+ */
+export type ContractPeriod = {
+  start: string; end: string; dueDate: string;
+  base: number; commission: number;
+  planFee: number; vehicles: number; extraVehicles: number; vehicleFee: number; minimumApplied: boolean; maximumApplied: boolean;
+  branchFee: number; extraBranches: number;
+  amount: number; status: PeriodStatus; payment?: ContractPayment;
+};
 
 /** Every period of a paid contract up to today; the last one is `open` while it has not closed. */
-export function contractPeriods(contract: Contract, budgets: AcceptedBudget[], payments: ContractPayment[], today = todayDate()): ContractPeriod[] {
+export function contractPeriods(contract: Contract, data: ContractBillingData, today = todayDate()): ContractPeriod[] {
   if (contract.kind !== "paid" || !contract.billing_cycle) return [];
   const percent = Number(contract.commission_percent);
-  const paidByStart = new Map(payments.filter((payment) => payment.contract_id === contract.id).map((payment) => [payment.period_start, payment]));
-  const garageBudgets = budgets.filter((budget) => budget.garage_id === contract.garage_id);
+  const paidByStart = new Map(data.payments.filter((payment) => payment.contract_id === contract.id).map((payment) => [payment.period_start, payment]));
+  const garageBudgets = data.budgets.filter((budget) => budget.garage_id === contract.garage_id);
+  const garageOrders = data.orders.filter((order) => order.garage_id === contract.garage_id);
   const lastDay = contract.end_date && contract.end_date < today ? contract.end_date : today;
+  const periodDays = contract.billing_cycle === "monthly" ? "month" : contract.billing_cycle === "weekly" ? 7 : 15;
   const periods: ContractPeriod[] = [];
 
   for (let start = contract.start_date; start <= lastDay; start = nextPeriodStart(start, contract.billing_cycle)) {
     const naturalEnd = addDays(nextPeriodStart(start, contract.billing_cycle), -1);
     const end = contract.end_date && contract.end_date < naturalEnd ? contract.end_date : naturalEnd;
-    const base = garageBudgets
-      .filter((budget) => { const day = budget.decided_at.slice(0, 10); return day >= start && day <= end; })
-      .reduce((total, budget) => total + Number(budget.total_amount), 0);
-    const amount = Math.round(base * percent) / 100;
+    const inPeriod = (timestamp: string) => { const day = timestamp.slice(0, 10); return day >= start && day <= end; };
+    const base = garageBudgets.filter((budget) => inPeriod(budget.decided_at)).reduce((total, budget) => total + Number(budget.total_amount), 0);
+    const vehicles = garageOrders.filter((order) => inPeriod(order.created_at)).length;
+    const charge = contract.plan
+      ? planCharge(contract.plan, { base, vehicles, periodDays })
+      : { planFee: 0, extraVehicles: 0, vehicleFee: 0, minimumApplied: false, maximumApplied: false, commission: Math.round(base * percent) / 100 };
+    const { count, fee: branchFee } = branchFeeForPeriod(data.extraBranches, contract.garage_id, start, end, periodDays);
+    const amount = Math.round((charge.planFee + charge.vehicleFee + charge.commission + branchFee) * 100) / 100;
     const dueDate = addDays(end, PAYMENT_GRACE_DAYS);
     const payment = paidByStart.get(start);
     const status: PeriodStatus = payment ? "paid" : end >= today ? "open" : today > dueDate ? "overdue" : "pending";
-    periods.push({ start, end, dueDate, base, amount, status, payment });
+    periods.push({ start, end, dueDate, base, vehicles, ...charge, branchFee, extraBranches: count, amount, status, payment });
   }
   return periods;
+}
+
+/** "Plan $15 + 3 vehículos extra $2.25 + 1 sucursal $10" style detail of a period's amount. */
+export function periodBreakdown(period: ContractPeriod, money: (value: number) => string) {
+  const parts = [
+    period.planFee ? `Plan ${money(period.planFee)}` : "",
+    period.vehicleFee ? `${period.extraVehicles} vehículo(s) extra ${money(period.vehicleFee)}` : "",
+    !period.planFee ? `${period.minimumApplied ? "Mínimo" : period.maximumApplied ? "Máximo" : "Comisión"} ${money(period.commission)}` : "",
+    period.branchFee ? `${period.extraBranches} sucursal(es) ${money(period.branchFee)}` : "",
+  ];
+  return parts.filter(Boolean).join(" + ");
 }
 
 export type GarageStanding = "up_to_date" | "pending" | "overdue" | "trial" | "trial_expired" | "no_contract";
@@ -127,7 +169,7 @@ export function contractCode(number: number) {
 export function buildContractMessage({ contract, garageName, ownerName, pdfUrl }: { contract: Contract; garageName: string; ownerName: string; pdfUrl: string }) {
   const terms = contract.kind === "trial"
     ? [`Te damos la bienvenida con un primer mes de prueba sin costo, del ${formatDate(contract.start_date)} al ${formatDate(contract.end_date!)}.`, "Al finalizar te enviaremos el contrato con el plan de pago."]
-    : [`Plan ${CYCLE_LABELS[contract.billing_cycle!].toLowerCase()} con una comisión del ${Number(contract.commission_percent)}% sobre los presupuestos aceptados, vigente desde el ${formatDate(contract.start_date)}.`, `El pago de cada período vence ${PAYMENT_GRACE_DAYS} días después de su cierre.`];
+    : [contract.plan ? `Plan ${PLANS[contract.plan].name}: ${planSummary(contract.plan).split(" · ").slice(1).join(", ")}, vigente desde el ${formatDate(contract.start_date)}.` : `Comisión del ${Number(contract.commission_percent)}% sobre los presupuestos aceptados, vigente desde el ${formatDate(contract.start_date)}.`, `Se cobra ${CYCLE_DESCRIPTIONS[contract.billing_cycle!]}; el pago vence al cierre de cada período y, tras ${LOCK_AFTER_DAYS} días de mora, se suspende el acceso hasta ponerse al día.`];
   return [
     `Hola ${ownerName},`,
     "",
@@ -159,7 +201,12 @@ export function buildRequirementsMessage(name?: string) {
     "7. Correo electrónico (será tu usuario para entrar)",
     "8. Teléfono",
     "",
-    "Con eso es suficiente. Una vez creado tu taller te enviaremos tu acceso y el contrato de tu *primer mes de prueba, sin costo*.",
+    "*Elige tu plan*",
+    ...plansComparisonLines(),
+    "",
+    "9. Indícanos qué plan prefieres (puedes cambiarlo más adelante).",
+    "",
+    "Con eso es suficiente. Una vez creado tu taller te enviaremos tu acceso y el contrato de tu *primer mes de prueba, sin costo*, con todas las funciones.",
   ].join("\n");
 }
 
@@ -214,7 +261,8 @@ export function buildTrialFollowUpMessage({ contract, garageName, ownerName }: {
     "",
     "Nos gustaría saber qué te pareció: qué te sirvió, qué mejorarías y si quieres seguir usando la plataforma.",
     "",
-    `Si continúas, te enviamos tu contrato. Tú eliges el plan de pago (semanal, quincenal o mensual) y solo pagas una comisión sobre los presupuestos que tus clientes aceptan.`,
+    "Si continúas, te enviamos tu contrato con el plan que prefieras:",
+    ...plansComparisonLines(),
     "",
     "Quedamos atentos a tu respuesta.",
   ].join("\n");

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { phoneSchema } from "@/lib/phone";
-import { authorizeStaffRequest } from "@/lib/auth/garage-staff";
+import { authorizeStaffRequest, resolveStaffBranch } from "@/lib/auth/garage-staff";
 import { notifyAppointmentCreated, notifyMechanicAssigned } from "@/lib/notifications";
 import { getOpenOrderForVehicle, openOrderMessage } from "@/lib/order-status";
 
@@ -36,8 +36,9 @@ const orderSchema = z.object({
   client: clientSchema,
   vehicle: vehicleSchema,
   mechanicId: z.uuid().nullable(),
+  branchId: z.uuid().nullable().optional(),
   appointmentDate: z.iso.date(),
-  appointmentTime: z.string().regex(/^(0[8-9]|1[0-7]):(00|30)$|^18:00$/),
+  appointmentTime: z.string().regex(/^([01]\d|2[0-3]):(00|30)$/),
   timezoneOffset: z.number().int().min(-840).max(840),
 });
 
@@ -51,6 +52,8 @@ export async function POST(request: Request) {
   const garage = { id: auth.staff.garageId };
 
   const input = parsed.data;
+  const branchId = await resolveStaffBranch(admin, auth.staff, input.branchId);
+  if (!branchId) return NextResponse.json({ error: "La sucursal seleccionada no es válida." }, { status: 400 });
   const [appointmentYear, appointmentMonth, appointmentDay] = input.appointmentDate.split("-").map(Number);
   const [appointmentHour, appointmentMinute] = input.appointmentTime.split(":").map(Number);
   const appointmentDate = new Date(Date.UTC(appointmentYear, appointmentMonth - 1, appointmentDay, appointmentHour, appointmentMinute) + input.timezoneOffset * 60_000).toISOString();
@@ -131,16 +134,17 @@ export async function POST(request: Request) {
   }
 
   if (input.mechanicId) {
-    const { data: mechanic } = await admin.from("mechanics").select("id").eq("id", input.mechanicId).eq("garage_id", garage.id).eq("is_active", true).maybeSingle();
+    const { data: mechanic } = await admin.from("mechanics").select("id").eq("id", input.mechanicId).eq("garage_id", garage.id).eq("branch_id", branchId).eq("is_active", true).maybeSingle();
     if (!mechanic) {
       if (createdClient) await admin.auth.admin.deleteUser(clientId);
       else if (createdVehicle) await admin.from("vehicles").delete().eq("id", vehicleId);
-      return NextResponse.json({ error: "El mecánico no está activo en tu taller." }, { status: 400 });
+      return NextResponse.json({ error: "El mecánico no está activo en esta sucursal." }, { status: 400 });
     }
   }
 
   const { data: order, error } = await admin.from("orders").insert({
     garage_id: garage.id,
+    branch_id: branchId,
     vehicle_id: vehicleId,
     mechanic_id: input.mechanicId,
     appointment_date: appointmentDate,
@@ -150,7 +154,7 @@ export async function POST(request: Request) {
     else if (createdVehicle) await admin.from("vehicles").delete().eq("id", vehicleId);
     if (error.code === "23505") {
       const openOrder = createdVehicle ? null : await getOpenOrderForVehicle(admin, vehicleId);
-      return NextResponse.json({ error: openOrder ? openOrderMessage(openOrder.status) : "Ese horario ya está reservado en tu taller. Elige otro." }, { status: 409 });
+      return NextResponse.json({ error: openOrder ? openOrderMessage(openOrder.status) : "Ese horario ya está reservado en esta sucursal. Elige otro." }, { status: 409 });
     }
     return NextResponse.json({ error: "No se pudo crear la orden." }, { status: 400 });
   }

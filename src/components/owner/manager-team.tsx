@@ -6,9 +6,10 @@ import { useState, type FormEvent } from "react";
 
 import { PasswordInput } from "@/components/ui/password-input";
 
-type ManagerRow = { id: string; fullName: string; phone: string | null; documentId: string | null; isActive: boolean };
+type ManagerRow = { id: string; fullName: string; phone: string | null; documentId: string | null; isActive: boolean; branchId: string };
 
-export function ManagerTeam({ managers }: { managers: ManagerRow[] }) {
+/** Each manager works at exactly one branch; `branches` (active ones) shows the picker when there are several. */
+export function ManagerTeam({ managers, branches }: { managers: ManagerRow[]; branches: { id: string; name: string }[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -35,12 +36,20 @@ export function ManagerTeam({ managers }: { managers: ManagerRow[] }) {
     router.refresh();
   }
 
+  async function move(manager: ManagerRow, branchId: string) {
+    setError(undefined);
+    const response = await fetch(`/api/owner/managers/${manager.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ branchId }) });
+    if (!response.ok) return setError("No se pudo mover el encargado.");
+    router.refresh();
+  }
+
+  const multiBranch = branches.length > 1;
   return (
     <section className="mt-10">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="flex items-center gap-2 font-display text-2xl font-bold"><ShieldCheck className="text-[#ef3f26]" /> Encargados</h2>
-          <p className="mt-1 max-w-2xl text-sm text-stone-600">Empleados de confianza que gestionan el taller: órdenes, agenda, presupuestos y mecánicos. No ven la facturación ni pueden crear otros encargados.</p>
+          <p className="mt-1 max-w-2xl text-sm text-stone-600">Empleados de confianza que gestionan el taller: órdenes, agenda, presupuestos y mecánicos. No ven la facturación ni pueden crear otros encargados.{multiBranch && " Cada encargado solo ve su sucursal."}</p>
         </div>
         <button type="button" onClick={() => setOpen(true)} className="flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-md bg-stone-900 px-5 font-bold text-white"><Plus size={19} /> Agregar encargado</button>
       </div>
@@ -51,6 +60,7 @@ export function ManagerTeam({ managers }: { managers: ManagerRow[] }) {
             <div className="min-w-0">
               <p className="truncate font-bold">{manager.fullName}</p>
               <p className="text-xs text-stone-500">{manager.phone ?? "Sin teléfono"} · {manager.documentId ?? "Sin documento"}</p>
+              {multiBranch && <div className="mt-2"><select aria-label="Sucursal" value={manager.branchId} onChange={(event) => move(manager, event.target.value)} className="min-h-9 rounded-md border border-stone-300 bg-white px-2 text-xs font-bold">{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></div>}
               <span className={`mt-2 inline-block rounded-sm px-2 py-1 text-xs font-bold ${manager.isActive ? "bg-emerald-100 text-emerald-700" : "bg-stone-100 text-stone-600"}`}>{manager.isActive ? "Activo" : "Inactivo"}</span>
             </div>
             <button type="button" onClick={() => toggle(manager)} className="min-h-10 shrink-0 rounded-md border border-stone-300 px-3 text-sm font-bold">{manager.isActive ? "Desactivar" : "Activar"}</button>
@@ -71,6 +81,7 @@ export function ManagerTeam({ managers }: { managers: ManagerRow[] }) {
               <input name="email" type="email" required placeholder="Correo" className="min-h-12 rounded-md border border-stone-300 px-4" />
               <input name="phone" required placeholder="Teléfono" className="min-h-12 rounded-md border border-stone-300 px-4" />
               <input name="documentId" required placeholder="Cédula / documento" className="min-h-12 rounded-md border border-stone-300 px-4" />
+              {multiBranch && <label className="grid gap-1 text-sm font-bold sm:col-span-2">Sucursal<select name="branchId" required defaultValue={branches[0]?.id} className="min-h-12 rounded-md border border-stone-300 bg-white px-4 font-normal">{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>}
               <PasswordInput name="temporaryPassword" required minLength={8} placeholder="Contraseña temporal" className="min-h-12 rounded-md border border-stone-300 px-4" containerClassName="sm:col-span-2" />
               {error && <p className="rounded-md bg-red-50 p-3 text-sm font-semibold text-red-700 sm:col-span-2">{error}</p>}
               <button disabled={pending} className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#ef3f26] px-5 font-bold text-white disabled:opacity-60 sm:col-span-2">{pending && <LoaderCircle className="animate-spin" size={19} />} Crear encargado</button>

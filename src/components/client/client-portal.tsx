@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { IntakeSummary } from "@/components/intake/intake-summary";
+import { ClientPaymentPanel } from "@/components/client/client-payment-panel";
 import { BudgetDecisionActions } from "@/components/orders/budget-decision-actions";
 import { formatAppointmentDateTime } from "@/lib/appointments";
 import type { ClientOrder, StatusEvent } from "@/lib/client-portal";
@@ -141,6 +142,7 @@ export function OrderCard({ order }: { order: ClientOrder }) {
                   {budget.approved ? "Aprobaste este presupuesto" : "Rechazaste este presupuesto"}
                 </p>
               )}
+              {order.paymentMethods && <ClientPaymentPanel orderId={order.orderId} total={budget.totalAmount} methods={order.paymentMethods} payment={order.payment} />}
             </>
           ) : (
             <p className="p-5 text-sm text-stone-600">El presupuesto aparecerá aquí cuando el taller termine el diagnóstico.</p>

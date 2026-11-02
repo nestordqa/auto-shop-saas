@@ -4,6 +4,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { after } from "next/server";
 
 import { formatAppointmentDateTime } from "@/lib/appointments";
+import { formatMoney } from "@/lib/billing";
+import { branchLabel } from "@/lib/branches";
 import { sendPush, type PushPayload } from "@/lib/push";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AppRole, OrderStatus } from "@/types/domain";
@@ -21,6 +23,8 @@ type OrderContext = {
   id: string;
   reference: string;
   garageId: string;
+  branchId: string;
+  /** "Taller · Sucursal" when the garage has several branches. */
   garageName: string;
   vehicleLabel: string;
   clientId: string;
@@ -31,18 +35,20 @@ type OrderContext = {
 type Message = { userIds: string[]; payload: PushPayload };
 
 export async function loadOrderContext(admin: SupabaseClient, orderId: string): Promise<OrderContext | null> {
-  const { data: order } = await admin.from("orders").select("id, garage_id, vehicle_id, mechanic_id, appointment_date").eq("id", orderId).maybeSingle();
+  const { data: order } = await admin.from("orders").select("id, garage_id, branch_id, vehicle_id, mechanic_id, appointment_date").eq("id", orderId).maybeSingle();
   if (!order) return null;
-  const [{ data: vehicle }, { data: garage }] = await Promise.all([
+  const [{ data: vehicle }, { data: garage }, { data: branches }] = await Promise.all([
     admin.from("vehicles").select("brand, model, year, plate, user_id").eq("id", order.vehicle_id).maybeSingle(),
     admin.from("garages").select("name").eq("id", order.garage_id).maybeSingle(),
+    admin.from("garage_branches").select("id, name").eq("garage_id", order.garage_id).eq("is_active", true),
   ]);
   if (!vehicle) return null;
   return {
     id: order.id,
     reference: order.id.slice(0, 8).toUpperCase(),
     garageId: order.garage_id,
-    garageName: garage?.name ?? "el taller",
+    branchId: order.branch_id,
+    garageName: branchLabel(garage?.name ?? "el taller", branches?.find((branch) => branch.id === order.branch_id), (branches?.length ?? 0) > 1),
     vehicleLabel: `${vehicle.brand} ${vehicle.model} ${vehicle.year} · ${vehicle.plate}`,
     clientId: vehicle.user_id,
     mechanicId: order.mechanic_id,
@@ -50,11 +56,11 @@ export async function loadOrderContext(admin: SupabaseClient, orderId: string): 
   };
 }
 
-/** Owner plus the garage's active managers. */
-async function garageStaffIds(admin: SupabaseClient, garageId: string) {
+/** Owner plus the active managers of the order's branch. */
+async function garageStaffIds(admin: SupabaseClient, garageId: string, branchId: string) {
   const [{ data: garage }, { data: managers }] = await Promise.all([
     admin.from("garages").select("owner_id").eq("id", garageId).maybeSingle(),
-    admin.from("garage_managers").select("profile_id").eq("garage_id", garageId).eq("is_active", true),
+    admin.from("garage_managers").select("profile_id").eq("garage_id", garageId).eq("branch_id", branchId).eq("is_active", true),
   ]);
   return [garage?.owner_id, ...(managers ?? []).map((manager) => manager.profile_id)].filter((id): id is string => Boolean(id));
 }
@@ -91,7 +97,7 @@ export function notifyAppointmentCreated(orderId: string, actor: Actor) {
     const order = await loadOrderContext(admin, orderId);
     if (!order) return;
     await deliver(admin, [{
-      userIds: await garageStaffIds(admin, order.garageId),
+      userIds: await garageStaffIds(admin, order.garageId, order.branchId),
       payload: { title: "Nueva cita agendada", body: `${order.vehicleLabel} · ${formatAppointmentDateTime(order.appointmentDate, "long")}`, url: staffUrl(order), tag: `appointment-${order.id}` },
     }], actor);
   });
@@ -112,6 +118,40 @@ export function notifyMechanicAssigned(orderId: string, mechanicId: string, acto
   });
 }
 
+/** Client paid online (proof uploaded) or chose to pay at the garage: only the garage owner hears about it. */
+export function notifyPaymentReported(orderId: string, online: boolean, actor: Actor) {
+  schedule(async (admin) => {
+    const order = await loadOrderContext(admin, orderId);
+    if (!order) return;
+    const [{ data: garage }, { data: payment }] = await Promise.all([
+      admin.from("garages").select("owner_id").eq("id", order.garageId).maybeSingle(),
+      admin.from("order_payments").select("amount").eq("order_id", order.id).neq("status", "rejected").maybeSingle(),
+    ]);
+    if (!garage?.owner_id) return;
+    const amount = payment ? ` · ${formatMoney(Number(payment.amount))}` : "";
+    await deliver(admin, [{
+      userIds: [garage.owner_id],
+      payload: online
+        ? { title: "Recibiste un pago", body: `El cliente reportó el pago de la orden ${order.reference} · ${order.vehicleLabel}${amount}. Revisa el comprobante y confírmalo.`, url: staffUrl(order), tag: `payment-${order.id}` }
+        : { title: "Pagará en el taller", body: `El cliente pagará en el taller la orden ${order.reference} · ${order.vehicleLabel}${amount}.`, url: staffUrl(order), tag: `payment-${order.id}` },
+    }], actor);
+  });
+}
+
+/** Owner confirmed, rejected or received the payment: the client is told. */
+export function notifyPaymentResolved(orderId: string, status: "confirmed" | "rejected" | "received", note: string | null, actor: Actor) {
+  schedule(async (admin) => {
+    const order = await loadOrderContext(admin, orderId);
+    if (!order) return;
+    const payloads = {
+      confirmed: { title: "Pago confirmado", body: `${order.garageName} confirmó tu pago de la orden ${order.reference} · ${order.vehicleLabel}. ¡Gracias!` },
+      received: { title: "Pago recibido", body: `${order.garageName} registró tu pago en el taller de la orden ${order.reference}. ¡Gracias!` },
+      rejected: { title: "No pudimos confirmar tu pago", body: `${order.garageName} no pudo verificar el pago de la orden ${order.reference}${note ? `: ${note}` : ""}. Revisa y vuelve a reportarlo.` },
+    };
+    await deliver(admin, [{ userIds: [order.clientId], payload: { ...payloads[status], url: CLIENT_URL, tag: `payment-${order.id}` } }], actor);
+  });
+}
+
 export function notifyBudgetDecision(orderId: string, approved: boolean, actor: Actor) {
   schedule(async (admin) => {
     const order = await loadOrderContext(admin, orderId);
@@ -119,7 +159,7 @@ export function notifyBudgetDecision(orderId: string, approved: boolean, actor: 
     const messages: Message[] = [];
     if (actor.role === "client") {
       messages.push({
-        userIds: await garageStaffIds(admin, order.garageId),
+        userIds: await garageStaffIds(admin, order.garageId, order.branchId),
         payload: { title: approved ? "Presupuesto aceptado" : "Presupuesto rechazado", body: `El cliente ${approved ? "aceptó" : "rechazó"} el presupuesto de la orden ${order.reference} · ${order.vehicleLabel}`, url: staffUrl(order), tag: `decision-${order.id}` },
       });
     } else if (approved) {
@@ -158,7 +198,7 @@ export function notifyStatusChange(orderId: string, from: OrderStatus, to: Order
     const clientMessage = clientEvent ? clientStatusMessage(order, to) : null;
     if (clientMessage) messages.push(clientMessage);
 
-    const staff = () => garageStaffIds(admin, order.garageId);
+    const staff = () => garageStaffIds(admin, order.garageId, order.branchId);
     if (from === "por_ingresar" && to === "ingresado") {
       messages.push({ userIds: await staff(), payload: { title: "Vehículo ingresado", body: `Orden ${order.reference} · ${order.vehicleLabel}`, url: staffUrl(order), tag: `status-${order.id}` } });
     } else if (actor.role === "mechanic" && (to === "diagnosticado" || to === "en_prueba" || to === "listo_para_entregar")) {

@@ -2,6 +2,8 @@ import { CalendarDays, RotateCcw } from "lucide-react";
 import Link from "next/link";
 
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
+import { BranchTabs } from "@/components/owner/branch-tabs";
+import { ScheduleEditor } from "@/components/owner/schedule-editor";
 import { UnavailabilityManager } from "@/components/owner/unavailability-manager";
 import { TablePagination } from "@/components/ui/table-pagination";
 import {
@@ -11,23 +13,24 @@ import {
   formatAppointmentDateTime,
   GARAGE_TIME_ZONE,
 } from "@/lib/appointments";
-import { requireOwnerGarage } from "@/lib/auth/require-owner-garage";
+import { branchScope, requireOwnerGarage } from "@/lib/auth/require-owner-garage";
 import {
   formatBillingMonth,
   getBillingMonth,
   getMonthOptions,
 } from "@/lib/billing";
 import { getOwnerOrders } from "@/lib/owner-orders";
+import { parseSchedule, scheduleSummary } from "@/lib/schedule";
 
 const pageSize = 10;
 
 export default async function OwnerAgendaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; page?: string }>;
+  searchParams: Promise<{ month?: string; page?: string; branch?: string }>;
 }) {
-  const { garage, dataClient, user } = await requireOwnerGarage();
-  const { month: requestedMonth, page = "1" } = await searchParams;
+  const { garage, dataClient, user, branches, staffBranchId } = await requireOwnerGarage();
+  const { month: requestedMonth, page = "1", branch } = await searchParams;
   if (!garage)
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
@@ -38,20 +41,28 @@ export default async function OwnerAgendaPage({
       </div>
     );
   const month = getBillingMonth(requestedMonth);
+  const { multiBranch, branchId, branchById } = branchScope(branches, staffBranchId, branch);
+  let blocksQuery = dataClient
+    .from("garage_unavailability")
+    .select("id, branch_id, starts_at, ends_at, reason")
+    .eq("garage_id", garage.id)
+    .gt("ends_at", new Date().toISOString());
+  // A branch sees its own blocks plus the ones for the whole garage.
+  if (branchId) blocksQuery = blocksQuery.or(`branch_id.is.null,branch_id.eq.${branchId}`);
   const [{ rows }, { data: blockRows }] = await Promise.all([
-    getOwnerOrders(dataClient, garage.id),
-    dataClient
-      .from("garage_unavailability")
-      .select("id, starts_at, ends_at, reason")
-      .eq("garage_id", garage.id)
-      .gt("ends_at", new Date().toISOString())
-      .order("starts_at"),
+    getOwnerOrders(dataClient, garage.id, branchId),
+    blocksQuery.order("starts_at"),
   ]);
   const now = new Date();
+  // Hours are edited per branch: the one in view, or the only one. "Todas" lists a summary instead.
+  const scheduleBranch = branchId ? branchById.get(branchId) : branches.length === 1 ? branches[0] : undefined;
   const blocks = (blockRows ?? []).map((block) => ({
     id: block.id as string,
     label: formatBlockRange(block.starts_at, block.ends_at),
     reason: block.reason as string | null,
+    scope: branches.length > 1 ? (block.branch_id ? branchById.get(block.branch_id)?.name ?? "Sucursal" : "Todas las sucursales") : null,
+    // Managers can only remove the blocks of their own branch.
+    canRemove: !staffBranchId || block.branch_id === staffBranchId,
     active: new Date(block.starts_at) <= now,
   }));
   const appointments = rows
@@ -96,7 +107,17 @@ export default async function OwnerAgendaPage({
           <p className="text-3xl font-bold">{todayCount}</p>
         </article>
       </section>
-      <UnavailabilityManager blocks={blocks} today={today} />
+      {multiBranch && <BranchTabs branches={branches} current={branchId} href={(id) => `/dashboard/owner/agenda?month=${month}${id ? `&branch=${id}` : ""}`} />}
+      {scheduleBranch ? (
+        <ScheduleEditor key={scheduleBranch.id} branchId={scheduleBranch.id} branchName={branches.length > 1 ? scheduleBranch.name : null} schedule={parseSchedule(scheduleBranch.schedule)} />
+      ) : (
+        <section className="mt-6 rounded-lg border border-stone-200 bg-white p-4 sm:p-5">
+          <h2 className="font-display text-xl font-bold">Horario de atención</h2>
+          <p className="mt-1 text-sm text-stone-600">Elige una sucursal arriba para editar su horario.</p>
+          <ul className="mt-3 grid gap-2 text-sm">{branches.filter((item) => item.is_active).map((item) => <li key={item.id}><strong>{item.name}:</strong> {scheduleSummary(parseSchedule(item.schedule))}</li>)}</ul>
+        </section>
+      )}
+      <UnavailabilityManager blocks={blocks} today={today} branches={staffBranchId || branches.length < 2 ? [] : branches.filter((item) => item.is_active).map((item) => ({ id: item.id, name: item.name }))} />
       <form className="mt-5 flex flex-col gap-2 rounded-lg border border-stone-200 bg-white p-3 sm:flex-row">
         <select
           name="month"
@@ -109,6 +130,7 @@ export default async function OwnerAgendaPage({
             </option>
           ))}
         </select>
+        {branchId && !staffBranchId && <input type="hidden" name="branch" value={branchId} />}
         <button className="rounded-md bg-stone-900 px-5 font-bold text-white">
           Ver agenda
         </button>
@@ -151,7 +173,7 @@ export default async function OwnerAgendaPage({
                     </Link>
                     <p className="text-xs text-stone-500">{order.plate}</p>
                   </td>
-                  <td className="p-4">{order.customer}</td>
+                  <td className="p-4">{order.customer}{multiBranch && !branchId && <p className="text-xs text-stone-500">{branchById.get(order.branchId)?.name}</p>}</td>
                   <td className="p-4">{order.mechanic}</td>
                   <td className="p-4"><OrderStatusBadge status={order.status} /></td>
                 </tr>
@@ -168,7 +190,7 @@ export default async function OwnerAgendaPage({
           currentPage={currentPage}
           pageSize={pageSize}
           pathname="/dashboard/owner/agenda"
-          searchParams={{ month }}
+          searchParams={{ month, ...(branchId && !staffBranchId && { branch: branchId }) }}
           totalItems={appointments.length}
         />
       </section>

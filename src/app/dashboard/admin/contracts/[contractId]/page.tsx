@@ -2,14 +2,20 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PaymentReportList, type PaymentReportView } from "@/components/admin/payment-report-actions";
 import { EndContractButton, RegisterPaymentButton } from "@/components/admin/contract-actions";
 import { ContractCreateModal } from "@/components/admin/contract-create-modal";
 import { ContractShare } from "@/components/admin/contract-share";
 import { TrialFollowUp } from "@/components/admin/trial-follow-up";
 import { WelcomeShare } from "@/components/admin/welcome-share";
+import { PAYMENT_PROOFS_BUCKET } from "@/lib/payments-data";
+import { PAYMENT_KIND_LABELS, type PaymentKind } from "@/lib/payments";
+import { loadReports } from "@/lib/billing-status";
+import { periodBreakdown } from "@/lib/contracts";
+import { planSummary } from "@/lib/plans";
 import { requireRole } from "@/lib/auth/require-role";
-import { formatMoney, getBillingCommissionPercent } from "@/lib/billing";
-import { addDays, contractCode, contractPeriods, contractTitle, CYCLE_LABELS, formatDate, PAYMENT_GRACE_DAYS, todayDate, type PeriodStatus } from "@/lib/contracts";
+import { formatMoney } from "@/lib/billing";
+import { addDays, contractCode, contractPeriods, contractTitle, CYCLE_LABELS, formatDate, LOCK_AFTER_DAYS, todayDate, type PeriodStatus } from "@/lib/contracts";
 import { loadContractData } from "@/lib/contracts-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -25,19 +31,34 @@ export default async function ContractDetailPage({ params, searchParams }: { par
   const [{ contractId }, { created }] = await Promise.all([params, searchParams]);
   const admin = createAdminClient();
   if (!admin) notFound();
-  const { contracts, payments, budgets } = await loadContractData(admin, { contractId });
+  const { contracts, ...billing } = await loadContractData(admin, { contractId });
   const contract = contracts[0];
   if (!contract) notFound();
 
   const today = todayDate();
   const [{ data: garage }, { data: owner }, { data: ownerAuth }, { data: history }] = await Promise.all([
-    admin.from("garages").select("name, address, slug").eq("id", contract.garage_id).single(),
+    admin.from("garages").select("name, address, slug, plan").eq("id", contract.garage_id).single(),
     admin.from("profiles").select("full_name, phone, document_id").eq("id", contract.owner_id).single(),
     admin.auth.admin.getUserById(contract.owner_id),
     admin.from("contracts").select("id, number, kind, status, start_date, end_date").eq("garage_id", contract.garage_id).order("start_date", { ascending: false }),
   ]);
   if (!garage || !owner) notFound();
-  const periods = contractPeriods(contract, budgets, payments, today).reverse();
+  const periods = contractPeriods(contract, billing, today).reverse();
+  // Owner payment reports (newest first) with signed links to their proofs.
+  const reportRows = await loadReports(admin, [contract.id]);
+  reportRows.sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const { data: proofLinks } = reportRows.length ? await admin.storage.from(PAYMENT_PROOFS_BUCKET).createSignedUrls(reportRows.map((report) => report.proof_path), 3600) : { data: [] };
+  const reports: PaymentReportView[] = reportRows.map((report) => ({
+    id: report.id,
+    period: `${formatDate(report.period_start)} – ${formatDate(report.period_end)}`,
+    amount: formatMoney(Number(report.amount)),
+    method: PAYMENT_KIND_LABELS[report.method_kind as PaymentKind] ?? report.method_kind,
+    reference: report.reference,
+    proofUrl: proofLinks?.find((link) => link.path === report.proof_path)?.signedUrl ?? null,
+    status: report.status,
+    note: report.note,
+    createdAt: new Intl.DateTimeFormat("es-VE", { dateStyle: "medium", timeZone: "America/Caracas" }).format(new Date(report.created_at)),
+  }));
   const isTrialEnding = contract.status === "active" && contract.kind === "trial";
   const trialExpired = isTrialEnding && Boolean(contract.end_date && contract.end_date < today);
   const nextStart = contract.end_date && addDays(contract.end_date, 1) > today ? addDays(contract.end_date, 1) : today;
@@ -47,7 +68,7 @@ export default async function ContractDetailPage({ params, searchParams }: { par
     <header className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div><p className="text-xs font-bold uppercase text-[#d9341d]">{contractCode(contract.number)} · {contract.status === "active" ? "Vigente" : contract.status === "ended" ? "Finalizado" : "Cancelado"}</p><h1 className="mt-2 font-display text-3xl font-bold sm:text-4xl">{garage.name}</h1><p className="mt-1 text-sm text-stone-600">{contractTitle(contract)} · {owner.full_name}</p></div>
       <div className="flex flex-wrap gap-2">
-        {isTrialEnding && <ContractCreateModal garages={[{ id: contract.garage_id, name: garage.name, ownerName: owner.full_name, suggestedKind: "paid", suggestedStart: nextStart }]} preselectedGarageId={contract.garage_id} defaultCommission={getBillingCommissionPercent()} today={today} label="Generar contrato de pago" />}
+        {isTrialEnding && <ContractCreateModal garages={[{ id: contract.garage_id, name: garage.name, ownerName: owner.full_name, suggestedKind: "paid", suggestedStart: nextStart, suggestedPlan: garage.plan ?? "bujia" }]} preselectedGarageId={contract.garage_id} today={today} label="Generar contrato de pago" />}
         {contract.status === "active" && <EndContractButton contractId={contract.id} />}
       </div>
     </header>
@@ -64,7 +85,7 @@ export default async function ContractDetailPage({ params, searchParams }: { par
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
           <Item label="Tipo" value={contract.kind === "trial" ? "Mes de prueba (cortesía)" : "Contrato de pago"} />
           <Item label="Vigencia" value={`${formatDate(contract.start_date)} → ${contract.end_date ? formatDate(contract.end_date) : "indefinida"}`} />
-          {contract.kind === "paid" && <><Item label="Plan" value={CYCLE_LABELS[contract.billing_cycle!]} /><Item label="Comisión" value={`${Number(contract.commission_percent)}% sobre presupuestos aceptados`} /><Item label="Vencimiento" value={`${PAYMENT_GRACE_DAYS} días tras cerrar cada período`} /></>}
+          {contract.kind === "paid" && <><Item label="Plan" value={contract.plan ? planSummary(contract.plan) : `Comisión del ${Number(contract.commission_percent)}% (plan anterior)`} /><Item label="Ciclo de cobro" value={CYCLE_LABELS[contract.billing_cycle!]} /><Item label="Vencimiento" value={`Al cierre de cada período · suspensión tras ${LOCK_AFTER_DAYS} días de mora`} /></>}
           <Item label="Owner" value={[owner.full_name, owner.document_id, ownerAuth.user?.email, owner.phone].filter(Boolean).join(" · ")} />
           {contract.notes && <Item label="Notas internas" value={contract.notes} />}
         </dl>
@@ -77,14 +98,19 @@ export default async function ContractDetailPage({ params, searchParams }: { par
       </section>
     </div>
 
+    {reports.length > 0 && <section className="mt-6 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm">
+      <h2 className="p-5 pb-2 font-display text-xl font-bold">Pagos reportados por el owner</h2>
+      <PaymentReportList reports={reports} />
+    </section>}
+
     {contract.kind === "paid" && <section className="mt-6 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm">
       <h2 className="p-5 font-display text-xl font-bold">Cobros por período</h2>
-      <div className="overflow-x-auto"><table className="w-full min-w-205 text-left text-sm"><thead className="bg-stone-100 text-xs uppercase text-stone-500"><tr><th className="p-4">Período</th><th className="p-4 text-right">Presupuestos aceptados</th><th className="p-4 text-right">Comisión</th><th className="p-4">Vence</th><th className="p-4">Estado</th><th className="p-4"><span className="sr-only">Acciones</span></th></tr></thead><tbody className="divide-y divide-stone-100">{periods.map((period) => {
+      <div className="overflow-x-auto"><table className="w-full min-w-205 text-left text-sm"><thead className="bg-stone-100 text-xs uppercase text-stone-500"><tr><th className="p-4">Período</th><th className="p-4 text-right">Presupuestos aceptados</th><th className="p-4 text-center">Vehículos</th><th className="p-4 text-right">A pagar</th><th className="p-4">Vence</th><th className="p-4">Estado</th><th className="p-4"><span className="sr-only">Acciones</span></th></tr></thead><tbody className="divide-y divide-stone-100">{periods.map((period) => {
         const amount = period.payment ? Number(period.payment.amount) : period.amount;
         return <tr key={period.start}>
           <td className="p-4 font-semibold">{formatDate(period.start)} – {formatDate(period.end)}</td>
-          <td className="p-4 text-right">{formatMoney(period.payment ? Number(period.payment.base_amount) : period.base)}</td>
-          <td className="p-4 text-right font-bold">{formatMoney(amount)}</td>
+          <td className="p-4 text-right">{formatMoney(period.payment ? Number(period.payment.base_amount) : period.base)}</td><td className="p-4 text-center">{period.vehicles}{period.extraVehicles > 0 && <span className="block text-xs font-bold text-[#d9341d]">+{period.extraVehicles} sobre el límite</span>}</td>
+          <td className="p-4 text-right font-bold">{formatMoney(amount)}{!period.payment && <p className="text-xs font-normal text-stone-500">{periodBreakdown(period, formatMoney)}</p>}</td>
           <td className="p-4">{formatDate(period.dueDate)}</td>
           <td className="p-4"><span className={`rounded-sm px-2 py-1 text-xs font-bold ${periodLabels[period.status][1]}`}>{periodLabels[period.status][0]}</span>{period.payment && <p className="mt-1 text-xs text-stone-500">{new Intl.DateTimeFormat("es", { dateStyle: "medium" }).format(new Date(period.payment.paid_at))}{period.payment.reference && ` · ${period.payment.reference}`}</p>}</td>
           <td className="p-4 text-right">{(period.status === "pending" || period.status === "overdue") && <RegisterPaymentButton contractId={contract.id} periodStart={period.start} amountLabel={formatMoney(amount)} />}</td>

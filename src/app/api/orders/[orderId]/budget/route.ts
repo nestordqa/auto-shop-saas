@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getStaffGarage } from "@/lib/auth/garage-staff";
+import { getStaffGarage, staffCanAccessOrder } from "@/lib/auth/garage-staff";
+import { getGarageBillingStatus } from "@/lib/billing-status";
 import { notifyStatusChange } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -37,10 +38,11 @@ export async function PUT(
   if (!["admin", "garage_owner", "garage_manager"].includes(role)) {
     return NextResponse.json({ error: "Solo el taller o un admin puede guardar presupuestos." }, { status: 403 });
   }
-  const { data: order } = await admin.from("orders").select("id, garage_id, status").eq("id", orderId).maybeSingle();
+  const { data: order } = await admin.from("orders").select("id, garage_id, branch_id, status").eq("id", orderId).maybeSingle();
   if (!order) return NextResponse.json({ error: "La orden no existe." }, { status: 404 });
   if (role !== "admin") {
-    if ((await getStaffGarage(admin, user))?.garageId !== order.garage_id) return NextResponse.json({ error: "La orden no pertenece a tu taller." }, { status: 403 });
+    if (!staffCanAccessOrder(await getStaffGarage(admin, user), order)) return NextResponse.json({ error: "La orden no pertenece a tu taller." }, { status: 403 });
+    if ((await getGarageBillingStatus(order.garage_id)).locked) return NextResponse.json({ error: "El acceso del taller está suspendido por falta de pago." }, { status: 402 });
   }
   const diagnosticIds = parsed.data.diagnostics.map(({ id }) => id);
   const { data: orderDiagnostics } = await admin.from("diagnostics").select("id").eq("order_id", orderId).in("id", diagnosticIds);

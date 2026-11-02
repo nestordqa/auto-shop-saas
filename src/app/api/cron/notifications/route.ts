@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { sendBillingReminders } from "@/lib/billing-notifications";
 import { sendScheduledReminders } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -11,5 +12,9 @@ export async function GET(request: Request) {
   }
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "Supabase no está configurado." }, { status: 503 });
-  return NextResponse.json({ sent: await sendScheduledReminders(admin) });
+  const [orders, billing] = await Promise.all([
+    sendScheduledReminders(admin),
+    sendBillingReminders(admin).catch((error: unknown) => ({ error: error instanceof Error ? error.message : "billing failed" })),
+  ]);
+  return NextResponse.json({ sent: orders, billing });
 }

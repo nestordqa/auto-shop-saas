@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getStaffGarage } from "@/lib/auth/garage-staff";
+import { getStaffGarage, staffCanAccessOrder } from "@/lib/auth/garage-staff";
+import { getGarageBillingStatus } from "@/lib/billing-status";
 import { notifyStatusChange } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -35,17 +36,19 @@ export async function PATCH(
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "La actualización de órdenes no está configurada." }, { status: 503 });
   const role = user.app_metadata.role;
-  const { data: order } = await admin.from("orders").select("id, garage_id, mechanic_id, status").eq("id", orderId).maybeSingle();
+  const { data: order } = await admin.from("orders").select("id, garage_id, branch_id, mechanic_id, status").eq("id", orderId).maybeSingle();
   if (!order) return NextResponse.json({ error: "La orden no existe." }, { status: 404 });
 
   let authorized = role === "admin";
   if (role === "garage_owner" || role === "garage_manager") {
-    authorized = (await getStaffGarage(admin, user))?.garageId === order.garage_id;
+    authorized = staffCanAccessOrder(await getStaffGarage(admin, user), order);
   } else if (role === "mechanic") {
     const { data: mechanic } = await admin.from("mechanics").select("id").eq("profile_id", user.id).eq("id", order.mechanic_id).eq("is_active", true).maybeSingle();
     authorized = Boolean(mechanic);
   }
   if (!authorized) return NextResponse.json({ error: "La orden no está asignada a tu perfil o taller." }, { status: 403 });
+  // Staff and mechanics of a garage suspended for arrears cannot work on its orders (clients still can).
+  if (role !== "admin" && role !== "client" && (await getGarageBillingStatus(order.garage_id)).locked) return NextResponse.json({ error: "El acceso del taller está suspendido por falta de pago." }, { status: 402 });
   if (role === "mechanic" && !MECHANIC_TRANSITIONS[order.status as OrderStatus]?.includes(parsed.data.status)) {
     return NextResponse.json({ error: "Este cambio de estado lo realiza el taller." }, { status: 403 });
   }

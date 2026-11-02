@@ -4,10 +4,10 @@ import { CalendarOff, LoaderCircle, Plus, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
-type Block = { id: string; label: string; reason: string | null; active: boolean };
+type Block = { id: string; label: string; reason: string | null; active: boolean; scope: string | null; canRemove: boolean };
 
-/** Owner/manager agenda: ranges in which clients cannot book appointments. */
-export function UnavailabilityManager({ blocks, today }: { blocks: Block[]; today: string }) {
+/** Owner/manager agenda: ranges in which clients cannot book appointments. `branches` (owner of a multi-branch garage) adds a scope picker. */
+export function UnavailabilityManager({ blocks, today, branches = [] }: { blocks: Block[]; today: string; branches?: { id: string; name: string }[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [allDay, setAllDay] = useState(true);
@@ -54,8 +54,8 @@ export function UnavailabilityManager({ blocks, today }: { blocks: Block[]; toda
         <ul className="mt-4 divide-y divide-stone-100 rounded-md border border-stone-200">
           {blocks.map((block) => (
             <li key={block.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-              <div className="min-w-0"><p className="font-bold">{block.label}{block.active && <span className="ml-2 rounded-sm bg-red-100 px-2 py-0.5 text-xs text-red-700">Ahora</span>}</p>{block.reason && <p className="text-stone-500">{block.reason}</p>}</div>
-              <button type="button" disabled={removing === block.id} onClick={() => remove(block.id)} aria-label="Eliminar bloqueo" className="grid size-10 shrink-0 place-items-center rounded-md text-red-600 hover:bg-red-50 disabled:opacity-60">{removing === block.id ? <LoaderCircle className="animate-spin" size={16} /> : <Trash2 size={17} />}</button>
+              <div className="min-w-0"><p className="font-bold">{block.label}{block.active && <span className="ml-2 rounded-sm bg-red-100 px-2 py-0.5 text-xs text-red-700">Ahora</span>}</p>{block.scope && <p className="text-xs font-semibold text-[#d9341d]">{block.scope}</p>}{block.reason && <p className="text-stone-500">{block.reason}</p>}</div>
+              {block.canRemove && <button type="button" disabled={removing === block.id} onClick={() => remove(block.id)} aria-label="Eliminar bloqueo" className="grid size-10 shrink-0 place-items-center rounded-md text-red-600 hover:bg-red-50 disabled:opacity-60">{removing === block.id ? <LoaderCircle className="animate-spin" size={16} /> : <Trash2 size={17} />}</button>}
             </li>
           ))}
         </ul>
@@ -76,6 +76,7 @@ export function UnavailabilityManager({ blocks, today }: { blocks: Block[]; toda
                 <label className="grid gap-1 text-sm font-bold">Hasta<input type="date" name="endDate" required min={startDate} defaultValue={today} className="min-h-12 rounded-md border border-stone-300 px-4 font-normal" /></label>
                 {!allDay && <label className="grid gap-1 text-sm font-bold">Hora de fin<input type="time" name="endTime" required defaultValue="18:00" className="min-h-12 rounded-md border border-stone-300 px-4 font-normal" /></label>}
               </div>
+              {branches.length > 0 && <label className="grid gap-1 text-sm font-bold">Aplica a<select name="branchId" defaultValue="" className="min-h-12 rounded-md border border-stone-300 bg-white px-4 font-normal"><option value="">Todas las sucursales</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>}
               <label className="grid gap-1 text-sm font-bold">Motivo (opcional)<input name="reason" maxLength={120} placeholder="Ej.: Vacaciones, feriado" className="min-h-12 rounded-md border border-stone-300 px-4 font-normal" /></label>
               {error && <p className="rounded-md bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
               <button disabled={pending} className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#ef3f26] px-5 font-bold text-white disabled:opacity-60">{pending && <LoaderCircle className="animate-spin" size={19} />} Guardar bloqueo</button>

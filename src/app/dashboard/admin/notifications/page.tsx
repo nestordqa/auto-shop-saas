@@ -1,3 +1,4 @@
+import { formatAppointmentDateTime } from "@/lib/appointments";
 import { AUDIENCE_LABELS, BroadcastForm, type BroadcastAudience } from "@/components/admin/broadcast-form";
 import { requireRole } from "@/lib/auth/require-role";
 import { isPushConfigured } from "@/lib/push";
@@ -36,7 +37,7 @@ export default async function NotificationsPage() {
         <ul className="mt-3 divide-y divide-stone-100">{(history ?? []).map((item) => <li key={item.id} className="py-3 text-sm">
           <div className="flex items-start justify-between gap-3"><p className="font-bold">{item.title}</p><span className="shrink-0 rounded-sm bg-stone-100 px-2 py-0.5 text-xs font-bold">{AUDIENCE_LABELS[item.audience as BroadcastAudience]}</span></div>
           <p className="mt-1 line-clamp-2 text-stone-600">{item.body}</p>
-          <p className="mt-1 text-xs text-stone-500">{new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.created_at))} · {item.recipient_count} usuarios · {item.delivered_count} dispositivos</p>
+          <p className="mt-1 text-xs text-stone-500">{formatAppointmentDateTime(item.created_at)} · {item.recipient_count} usuarios · {item.delivered_count} dispositivos</p>
         </li>)}</ul>
         {!history?.length && <p className="mt-3 text-sm text-stone-500">Aún no has enviado notificaciones.</p>}
       </section>

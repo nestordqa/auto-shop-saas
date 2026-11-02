@@ -1,6 +1,9 @@
 import type { VehicleIntake } from "@/lib/intake";
+import { branchLabel, getBranchesByGarage } from "@/lib/branches";
 import { resolveClientGarage } from "@/lib/client-garage";
 import { getOrderIntakes } from "@/lib/intake-data";
+import { canPayOrder, type OrderPayment, type PaymentMethod } from "@/lib/payments";
+import { getOrderPayments, getPaymentMethods } from "@/lib/payments-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { ORDER_STATUS_LABELS, type OrderStatus } from "@/types/domain";
@@ -17,6 +20,9 @@ export type ClientOrder = {
   garageAddress: string;
   history: StatusEvent[];
   intake: VehicleIntake | null;
+  /** Latest payment, and the garage methods when the order can be paid (budget approved, in repair or later). */
+  payment: OrderPayment | null;
+  paymentMethods: PaymentMethod[] | null;
   budget: {
     includesParts: boolean;
     totalAmount: number;
@@ -32,7 +38,7 @@ export async function loadClientPortal(userId: string) {
   const { data: vehicles } = await dataClient.from("vehicles").select("id, brand, model, year, plate").eq("user_id", userId);
   const vehicleIds = (vehicles ?? []).map(({ id }) => id);
   const { data: orderRows } = vehicleIds.length
-    ? await dataClient.from("orders").select("id, vehicle_id, garage_id, status, appointment_date").in("vehicle_id", vehicleIds).order("created_at", { ascending: false })
+    ? await dataClient.from("orders").select("id, vehicle_id, garage_id, branch_id, status, appointment_date").in("vehicle_id", vehicleIds).order("created_at", { ascending: false })
     : { data: [] };
   const orderIds = (orderRows ?? []).map(({ id }) => id);
   const [{ data: budgets }, { data: diagnostics }, { data: history }, { data: garages }, intakes, homeGarage] = await Promise.all([
@@ -44,12 +50,22 @@ export async function loadClientPortal(userId: string) {
     admin ? resolveClientGarage(admin) : Promise.resolve(null),
   ]);
 
+  // All branches (inactive too: past orders may point to one); booking only offers the active ones.
+  const branchesByGarage = await getBranchesByGarage(dataClient, (garages ?? []).map((garage) => garage.id));
+  // Payments: only for orders that can be paid; methods are loaded once per garage.
+  const payable = (orderRows ?? []).filter((order) => canPayOrder(order.status as OrderStatus, budgets?.find((item) => item.order_id === order.id)?.approved));
+  const [payments, methodsByGarage] = admin ? await Promise.all([
+    getOrderPayments(admin, payable.map((order) => order.id)),
+    Promise.all([...new Set(payable.map((order) => order.garage_id as string))].map(async (garageId) => [garageId, await getPaymentMethods(admin, garageId, { enabledOnly: true })] as const)).then((entries) => new Map(entries)),
+  ]) : [new Map<string, OrderPayment>(), new Map<string, PaymentMethod[]>()];
   const vehicleLabel = (vehicle: { brand: string; model: string; year: number; plate: string }) => `${vehicle.brand} ${vehicle.model} ${vehicle.year} · ${vehicle.plate}`;
 
   const orders: ClientOrder[] = (orderRows ?? []).flatMap((order) => {
     const vehicle = vehicles?.find((item) => item.id === order.vehicle_id);
     if (!vehicle) return [];
     const garage = garages?.find((item) => item.id === order.garage_id);
+    const garageBranches = branchesByGarage.get(order.garage_id) ?? [];
+    const branch = garageBranches.find((item) => item.id === order.branch_id);
     const budget = budgets?.find((item) => item.order_id === order.id);
     return [{
       orderId: order.id,
@@ -57,10 +73,12 @@ export async function loadClientPortal(userId: string) {
       status: order.status as OrderStatus,
       appointmentDate: order.appointment_date,
       vehicle: vehicleLabel(vehicle),
-      garageName: garage?.name ?? "Taller",
-      garageAddress: garage?.address ?? "",
+      garageName: branchLabel(garage?.name ?? "Taller", branch, garageBranches.length > 1),
+      garageAddress: branch?.address ?? garage?.address ?? "",
       history: (history ?? []).filter((item) => item.order_id === order.id).map((item) => ({ status: item.status as OrderStatus, at: item.changed_at })),
       intake: intakes.get(order.id) ?? null,
+      payment: payments.get(order.id) ?? null,
+      paymentMethods: methodsByGarage.get(order.garage_id) ?? null,
       budget: budget ? {
         includesParts: budget.includes_parts,
         totalAmount: Number(budget.total_amount),
@@ -76,7 +94,7 @@ export async function loadClientPortal(userId: string) {
       const openStatus = orders.find((order) => order.vehicleId === vehicle.id && order.status !== "entregado")?.status;
       return { id: vehicle.id, label: vehicleLabel(vehicle), openOrderLabel: openStatus ? ORDER_STATUS_LABELS[openStatus] : null };
     }),
-    garages: (garages ?? []).map((garage) => ({ id: garage.id, label: garage.name, address: garage.address, specialty: garage.specialty })),
+    garages: (garages ?? []).map((garage) => ({ id: garage.id, label: garage.name, address: garage.address, specialty: garage.specialty, branches: (branchesByGarage.get(garage.id) ?? []).filter((branch) => branch.is_active).map((branch) => ({ id: branch.id, name: branch.name, address: branch.address })) })),
     defaultGarageId: homeGarage?.id,
   };
 }

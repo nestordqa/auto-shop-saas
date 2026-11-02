@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { phoneSchema } from "@/lib/phone";
-import { authorizeStaffRequest } from "@/lib/auth/garage-staff";
+import { authorizeStaffRequest, resolveStaffBranch } from "@/lib/auth/garage-staff";
 
 const managerSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
@@ -10,6 +10,7 @@ const managerSchema = z.object({
   phone: phoneSchema,
   documentId: z.string().trim().min(4).max(30),
   temporaryPassword: z.string().min(8).max(72),
+  branchId: z.uuid().optional(),
 });
 
 export async function POST(request: Request) {
@@ -21,6 +22,8 @@ export async function POST(request: Request) {
   const { admin, staff } = auth;
 
   const input = parsed.data;
+  const branchId = await resolveStaffBranch(admin, staff, input.branchId);
+  if (!branchId) return NextResponse.json({ error: "La sucursal seleccionada no es válida." }, { status: 400 });
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
     email: input.email,
     password: input.temporaryPassword,
@@ -42,7 +45,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No se pudo sincronizar el perfil del encargado." }, { status: 500 });
   }
 
-  const { error: managerError } = await admin.from("garage_managers").insert({ profile_id: profileId, garage_id: staff.garageId });
+  const { error: managerError } = await admin.from("garage_managers").insert({ profile_id: profileId, garage_id: staff.garageId, branch_id: branchId });
   if (managerError) {
     await admin.auth.admin.deleteUser(profileId);
     return NextResponse.json({ error: "No se pudo agregar el encargado al taller." }, { status: 400 });

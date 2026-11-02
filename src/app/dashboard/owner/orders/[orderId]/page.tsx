@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarDays, UserRound, Wrench } from "lucide-react";
+import { ArrowLeft, CalendarDays, MapPin, UserRound, Wrench } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -10,8 +10,11 @@ import { DiagnosticReport } from "@/components/orders/diagnostic-report";
 import { MechanicDiagnosticForm } from "@/components/orders/mechanic-diagnostic-form";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OwnerBudgetEditor } from "@/components/orders/owner-budget-editor";
+import { OrderPaymentPanel } from "@/components/owner/order-payment-panel";
 import { OrderMechanicAssignment } from "@/components/owner/order-mechanic-assignment";
 import { OrderProgressAction } from "@/components/owner/order-progress-action";
+import { canPayOrder } from "@/lib/payments";
+import { getOrderPayments } from "@/lib/payments-data";
 import { formatAppointmentDateTime } from "@/lib/appointments";
 import { requireOwnerGarage } from "@/lib/auth/require-owner-garage";
 import { getOrderIntake } from "@/lib/intake-data";
@@ -32,7 +35,7 @@ export default async function OwnerOrderDetailPage({
   params: Promise<{ orderId: string }>;
 }) {
   const { orderId } = await params;
-  const { garage, dataClient, user } = await requireOwnerGarage();
+  const { garage, dataClient, user, staffBranchId, branches, staffRole } = await requireOwnerGarage();
   if (!garage)
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
@@ -44,11 +47,12 @@ export default async function OwnerOrderDetailPage({
     );
   const { data: order } = await dataClient
     .from("orders")
-    .select("id, vehicle_id, mechanic_id, status, appointment_date")
+    .select("id, branch_id, vehicle_id, mechanic_id, status, appointment_date")
     .eq("id", orderId)
     .eq("garage_id", garage.id)
     .maybeSingle();
-  if (!order) notFound();
+  // Managers only open orders of their branch.
+  if (!order || (staffBranchId && order.branch_id !== staffBranchId)) notFound();
 
   const [
     { data: vehicle },
@@ -85,11 +89,13 @@ export default async function OwnerOrderDetailPage({
       .from("mechanics")
       .select("id, profile_id, specialty")
       .eq("garage_id", garage.id)
+      .eq("branch_id", order.branch_id)
       .eq("is_active", true)
       .order("created_at"),
     getOrderIntake(dataClient, order.id),
     getVehicleHistory(dataClient, order.vehicle_id, { garageId: garage.id }, { excludeOrderId: order.id }),
   ]);
+  const payment = (await getOrderPayments(dataClient, [order.id])).get(order.id) ?? null;
   const profileIds = [
     vehicle?.user_id,
     mechanic?.profile_id,
@@ -145,7 +151,7 @@ export default async function OwnerOrderDetailPage({
           <OrderStatusBadge status={status} size="lg" />
         </div>
       </header>
-      <section className="my-6 grid gap-3 sm:grid-cols-3">
+      <section className="my-6 grid gap-3 sm:grid-cols-3 lg:auto-cols-fr lg:grid-flow-col">
         <Info
           icon={UserRound}
           label="Cliente"
@@ -161,6 +167,13 @@ export default async function OwnerOrderDetailPage({
           label="Cita"
           value={formatAppointmentDateTime(order.appointment_date)}
         />
+        {branches.length > 1 && (
+          <Info
+            icon={MapPin}
+            label="Sucursal"
+            value={branches.find((branch) => branch.id === order.branch_id)?.name ?? "Sucursal"}
+          />
+        )}
       </section>
       <OrderMechanicAssignment
         orderId={order.id}
@@ -240,6 +253,9 @@ export default async function OwnerOrderDetailPage({
         <p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-5 font-semibold text-red-800">
           El presupuesto fue rechazado.
         </p>
+      )}
+      {canPayOrder(status, budget?.approved) && (
+        <OrderPaymentPanel orderId={order.id} payment={payment} canResolve={staffRole === "garage_owner"} />
       )}
       {(status === "en_reparacion" || status === "en_prueba" || status === "listo_para_entregar") && (
         <OrderProgressAction orderId={order.id} status={status} />

@@ -15,10 +15,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ con
   if (!auth.ok) return auth.response;
   const { contractId } = await params;
 
-  const { contracts, budgets, payments } = await loadContractData(auth.admin, { contractId });
+  const { contracts, ...billing } = await loadContractData(auth.admin, { contractId });
   const contract = contracts[0];
   if (!contract) return NextResponse.json({ error: "El contrato no existe." }, { status: 404 });
-  const period = contractPeriods(contract, budgets, payments).find((item) => item.start === parsed.data.periodStart);
+  const period = contractPeriods(contract, billing).find((item) => item.start === parsed.data.periodStart);
   if (!period) return NextResponse.json({ error: "El período no existe." }, { status: 400 });
   if (period.status === "paid") return NextResponse.json({ error: "Este período ya está pagado." }, { status: 409 });
   if (period.status === "open") return NextResponse.json({ error: "El período aún no ha cerrado." }, { status: 400 });

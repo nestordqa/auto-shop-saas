@@ -1,8 +1,3 @@
-export const APPOINTMENT_TIMES = Array.from({ length: 21 }, (_, index) => {
-  const minutes = 8 * 60 + index * 30;
-  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-});
-
 export const GARAGE_TIME_ZONE = "America/Caracas";
 /** Caracas is UTC-4 all year (no DST), in `Date#getTimezoneOffset` minutes. */
 export const GARAGE_TIMEZONE_OFFSET = 240;
@@ -13,8 +8,14 @@ export function appointmentIso(date: string, time: string, timezoneOffset: numbe
   return new Date(Date.UTC(year, month - 1, day, hour, minute) + timezoneOffset * 60_000).toISOString();
 }
 
+/** Time of day in garage time on the 12-hour clock: "2:30 PM". */
+export function formatTime12(value: string | Date) {
+  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: GARAGE_TIME_ZONE }).format(new Date(value));
+}
+
+/** Date plus 12-hour time (Venezuela does not use the 24-hour clock): "5 nov 2026, 2:30 PM". */
 export function formatAppointmentDateTime(value: string | Date, dateStyle: "short" | "medium" | "long" = "medium") {
-  return new Intl.DateTimeFormat("es-VE", { dateStyle, timeStyle: "short", timeZone: GARAGE_TIME_ZONE }).format(new Date(value));
+  return `${formatAppointmentDate(value, dateStyle)}, ${formatTime12(value)}`;
 }
 
 export function formatAppointmentDate(value: string | Date, dateStyle: "short" | "medium" | "long" = "short") {

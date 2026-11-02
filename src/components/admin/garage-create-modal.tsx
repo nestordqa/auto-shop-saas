@@ -6,20 +6,35 @@ import { useState, type FormEvent } from "react";
 
 import { GarageLinkShare } from "@/components/admin/garage-link-share";
 import { PasswordInput } from "@/components/ui/password-input";
+import { PLAN_KEYS, PLANS, planSummary } from "@/lib/plans";
+import { MECHANIC_SPECIALTIES, MECHANIC_SPECIALTY_LABELS } from "@/lib/mechanics";
+
+const DEFAULT_SPECIALTY = MECHANIC_SPECIALTY_LABELS.general;
+const SPECIALTY_OPTIONS = MECHANIC_SPECIALTIES.map((value) => MECHANIC_SPECIALTY_LABELS[value]);
 
 type OwnerOption = { id: string; fullName: string; documentId: string | null };
+export type ProspectOption = { id: string; name: string; contactName: string | null; phone: string | null; email: string | null; address: string | null; mapLocation: string | null; specialty: string | null; city: string | null; statusLabel: string };
 
-export function GarageCreateModal({ owners }: { owners: OwnerOption[] }) {
+export function GarageCreateModal({ owners, prospects = [] }: { owners: OwnerOption[]; prospects?: ProspectOption[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [ownerMode, setOwnerMode] = useState<"existing" | "new">(owners.length ? "existing" : "new");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [created, setCreated] = useState<{ name: string; slug: string; ownerPhone: string | null } | null>(null);
+  const [prospect, setProspect] = useState<ProspectOption>();
+
+  function selectProspect(id: string) {
+    const selected = prospects.find((item) => item.id === id);
+    setProspect(selected);
+    // A prospect is a new business: its contact becomes a new owner.
+    if (selected) setOwnerMode("new");
+  }
 
   function close() {
     setOpen(false);
     setCreated(null);
+    setProspect(undefined);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -40,6 +55,7 @@ export function GarageCreateModal({ owners }: { owners: OwnerOption[] }) {
       return;
     }
     form.reset();
+    setProspect(undefined);
     setCreated(result.garage);
     router.refresh();
   }
@@ -60,10 +76,12 @@ export function GarageCreateModal({ owners }: { owners: OwnerOption[] }) {
               <button type="button" onClick={close} className="min-h-12 rounded-md border border-stone-300 px-5 font-bold">Listo</button>
             </div>
           ) : (
-          <form onSubmit={submit} className="grid gap-5 p-4 sm:p-6">
-            <fieldset className="grid gap-3"><legend className="mb-2 text-sm font-bold">Datos del taller</legend><input name="name" required minLength={2} placeholder="Nombre comercial" className="min-h-12 rounded-md border border-stone-300 px-4" /><input name="specialty" maxLength={120} placeholder="Especialidad (opcional): ej. Frenos y suspensión" className="min-h-12 rounded-md border border-stone-300 px-4" /><textarea name="address" required minLength={5} rows={3} placeholder="Dirección completa" className="min-h-24 resize-none rounded-md border border-stone-300 p-4" /><input name="mapLocation" placeholder="URL o coordenadas del mapa (opcional)" className="min-h-12 rounded-md border border-stone-300 px-4" /></fieldset>
+          <form key={prospect?.id ?? "blank"} onSubmit={submit} className="grid gap-5 p-4 sm:p-6">
+            {prospects.length > 0 && <label className="grid gap-1 rounded-md border border-dashed border-stone-300 bg-stone-50 p-3 text-sm font-bold">Cargar datos desde un prospecto (opcional)<select value={prospect?.id ?? ""} onChange={(event) => selectProspect(event.target.value)} className="min-h-12 rounded-md border border-stone-300 bg-white px-4 font-normal"><option value="">— Sin prospecto —</option>{prospects.map((item) => <option key={item.id} value={item.id}>{item.name}{item.contactName ? ` · ${item.contactName}` : ""} ({item.statusLabel})</option>)}</select>{prospect && <span className="text-xs font-normal text-stone-600">Revisa y completa lo que falte (cédula, correo, contraseña). Al crear el taller, el prospecto quedará como Convertido.</span>}</label>}
+            <input type="hidden" name="prospectId" value={prospect?.id ?? ""} />
+            <fieldset className="grid gap-3"><legend className="mb-2 text-sm font-bold">Datos del taller</legend><input name="name" required minLength={2} defaultValue={prospect?.name} placeholder="Nombre comercial" className="min-h-12 rounded-md border border-stone-300 px-4" /><label className="grid gap-1 text-sm font-bold">Especialidad<select name="specialty" defaultValue={SPECIALTY_OPTIONS.find((label) => label === prospect?.specialty) ?? DEFAULT_SPECIALTY} className="min-h-12 rounded-md border border-stone-300 bg-white px-4 font-normal">{SPECIALTY_OPTIONS.map((label) => <option key={label} value={label}>{label}</option>)}</select></label><fieldset className="grid gap-2"><legend className="mb-1 text-sm font-bold">Plan elegido</legend>{PLAN_KEYS.map((key) => <label key={key} className="flex cursor-pointer items-start gap-3 rounded-md border border-stone-300 p-3 text-sm has-checked:border-[#ef3f26] has-checked:bg-red-50/40"><input type="radio" name="plan" value={key} defaultChecked={key === "bujia"} className="mt-1 accent-[#ef3f26]" /><span><span className="block font-bold">{PLANS[key].name} <span className="font-normal text-stone-500">· {PLANS[key].audience}</span></span><span className="text-stone-600">{planSummary(key).split(" · ").slice(1).join(" · ")}</span></span></label>)}<span className="text-xs font-normal text-stone-500">Empieza con el mes de prueba; este plan se sugerirá al generar su contrato de pago.</span></fieldset><textarea name="address" required minLength={5} rows={3} defaultValue={prospect ? [prospect.address, prospect.city].filter(Boolean).join(", ") : undefined} placeholder="Dirección completa" className="min-h-24 resize-none rounded-md border border-stone-300 p-4" /><input name="mapLocation" defaultValue={prospect?.mapLocation ?? ""} placeholder="URL o coordenadas del mapa (opcional)" className="min-h-12 rounded-md border border-stone-300 px-4" /></fieldset>
             <fieldset><legend className="text-sm font-bold">Owner</legend><div className="mt-2 grid grid-cols-2 rounded-md bg-stone-100 p-1"><button type="button" disabled={!owners.length} onClick={() => setOwnerMode("existing")} className={`min-h-11 rounded-sm px-3 text-sm font-bold ${ownerMode === "existing" ? "bg-white shadow-sm" : "text-stone-500"}`}>Owner existente</button><button type="button" onClick={() => setOwnerMode("new")} className={`min-h-11 rounded-sm px-3 text-sm font-bold ${ownerMode === "new" ? "bg-white shadow-sm" : "text-stone-500"}`}>Crear owner</button></div>
-              {ownerMode === "existing" ? <select name="ownerId" required className="mt-3 min-h-12 w-full rounded-md border border-stone-300 bg-white px-4"><option value="">Selecciona un owner disponible</option>{owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.fullName}{owner.documentId ? ` · ${owner.documentId}` : ""}</option>)}</select> : <div className="mt-3 grid gap-3 sm:grid-cols-2"><input name="ownerName" required placeholder="Nombre completo" className="min-h-12 rounded-md border border-stone-300 px-4" /><input name="ownerEmail" required type="email" placeholder="Correo" className="min-h-12 rounded-md border border-stone-300 px-4" /><input name="ownerPhone" required type="tel" placeholder="Teléfono" className="min-h-12 rounded-md border border-stone-300 px-4" /><input name="ownerDocument" required placeholder="Cédula / RIF" className="min-h-12 rounded-md border border-stone-300 px-4" /><PasswordInput name="temporaryPassword" required minLength={8} placeholder="Contraseña temporal" className="min-h-12 rounded-md border border-stone-300 px-4" containerClassName="sm:col-span-2" /></div>}
+              {ownerMode === "existing" ? <select name="ownerId" required className="mt-3 min-h-12 w-full rounded-md border border-stone-300 bg-white px-4"><option value="">Selecciona un owner disponible</option>{owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.fullName}{owner.documentId ? ` · ${owner.documentId}` : ""}</option>)}</select> : <div className="mt-3 grid gap-3 sm:grid-cols-2"><input name="ownerName" required defaultValue={prospect?.contactName ?? ""} placeholder="Nombre completo" className="min-h-12 rounded-md border border-stone-300 px-4" /><input name="ownerEmail" required type="email" defaultValue={prospect?.email ?? ""} placeholder="Correo" className="min-h-12 rounded-md border border-stone-300 px-4" /><input name="ownerPhone" required type="tel" defaultValue={prospect?.phone ?? ""} placeholder="Teléfono" className="min-h-12 rounded-md border border-stone-300 px-4" /><input name="ownerDocument" required placeholder="Cédula / RIF" className="min-h-12 rounded-md border border-stone-300 px-4" /><PasswordInput name="temporaryPassword" required minLength={8} placeholder="Contraseña temporal" className="min-h-12 rounded-md border border-stone-300 px-4" containerClassName="sm:col-span-2" /></div>}
             </fieldset>
             {error && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
             <button disabled={pending} className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#ef3f26] px-5 font-bold text-white disabled:opacity-60">{pending && <LoaderCircle className="animate-spin" size={19} />} Crear taller</button>

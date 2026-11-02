@@ -33,19 +33,29 @@ import type { CSSProperties, ReactNode } from "react";
 import { TorkeMark } from "@/components/brand/torke-logo";
 import { LandingEffects } from "@/components/landing/landing-effects";
 import { LandingHeader } from "@/components/landing/landing-header";
-import { getBillingCommissionPercent } from "@/lib/billing";
+import { EXTRA_BRANCH_FEE } from "@/lib/billing-branches";
+import { TORKEOS_WHATSAPP, torkeosWhatsAppUrl } from "@/lib/contact";
+import { EXTRA_VEHICLE_FEE, PLAN_KEYS, PLANS, RATE_NOTE } from "@/lib/plans";
 import { serializeJsonLd, siteUrl } from "@/lib/seo";
 import { ORDER_STATUSES, ORDER_STATUS_LABELS } from "@/types/domain";
 
-const WHATSAPP_NUMBER = "584121385416";
 const WHATSAPP_MESSAGE = "Hola, quiero TorkeOS para mi taller. ¿Me cuentan cómo empezar?";
-const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
+// TorkeOS number comes from NEXT_PUBLIC_TORKEOS_WHATSAPP; without it the CTAs open the garage sign-up form.
+const WHATSAPP_URL = torkeosWhatsAppUrl(WHATSAPP_MESSAGE) ?? "/register?tipo=taller";
 const CONTACT_EMAIL = "contacto@torkeos.com";
 
-const commission = getBillingCommissionPercent();
+const fromPrice = PLANS.bujia.kind === "subscription" ? PLANS.bujia.price : 0;
+
+/** "Bujía $15/mes (hasta 15 vehículos), …" for the FAQ and structured data. */
+function plansText() {
+  return PLAN_KEYS.map((key) => {
+    const plan = PLANS[key];
+    return plan.kind === "subscription" ? `${plan.name} $${plan.price}/mes (hasta ${plan.vehicleLimit} vehículos al mes)` : `${plan.name} ${plan.percent}% de los presupuestos aceptados (mínimo $${plan.minimum} y máximo $${plan.maximum} al mes, vehículos ilimitados)`;
+  }).join(", ") + ".";
+}
 
 const title = "TorkeOS · Software para talleres mecánicos: citas, diagnósticos y presupuestos";
-const description = `Gestiona tu taller mecánico desde el teléfono: agenda online, órdenes de trabajo, diagnósticos, presupuestos aprobados por el cliente y avisos por WhatsApp. Gratis para clientes; los talleres pagan solo el ${commission}% de lo aprobado.`;
+const description = `Gestiona tu taller mecánico desde el teléfono: agenda online, órdenes de trabajo, diagnósticos, presupuestos aprobados por el cliente y avisos por WhatsApp. Gratis para clientes; planes para talleres desde $${fromPrice} al mes.`;
 
 export const metadata: Metadata = {
   title: { absolute: title },
@@ -127,7 +137,7 @@ const ownerSteps: Step[] = [
   {
     icon: Receipt,
     title: "Tu facturación, clara",
-    body: `Cada mes ves los presupuestos aceptados, su total y la comisión del ${commission}%. Sin letras pequeñas.`,
+    body: "Cada mes ves tu plan, los vehículos atendidos, los presupuestos aceptados y lo que vas a pagar. Sin letras pequeñas.",
   },
 ];
 
@@ -182,11 +192,11 @@ const clientSteps: Step[] = [
 const faqs = [
   {
     q: "¿Cuánto cuesta TorkeOS?",
-    a: `Para los clientes es completamente gratis. Los talleres no pagan cuota fija: solo el ${commission}% del monto de cada presupuesto que su cliente acepta.`,
+    a: `Para los clientes es completamente gratis. Los talleres eligen un plan: ${plansText()} Todos empiezan con 30 días de prueba sin costo.`,
   },
   {
-    q: `¿Cómo se calcula el ${commission}%?`,
-    a: `Se suma el total de los presupuestos aprobados en el mes y se aplica el ${commission}%. Los presupuestos rechazados o pendientes no generan ningún cobro.`,
+    q: "¿Qué pasa si me paso de vehículos o tengo varias sucursales?",
+    a: `En Bujía y Alternador cada vehículo extra sobre el límite del mes cuesta $${EXTRA_VEHICLE_FEE}; si siempre te pasas, te conviene subir de plan. Cada sucursal adicional suma $${EXTRA_BRANCH_FEE} al mes en cualquier plan.`,
   },
   {
     q: "¿Necesito instalar algo?",
@@ -216,7 +226,7 @@ const jsonLd = {
       url: siteUrl,
       logo: `${siteUrl}/apple-icon.png`,
       email: CONTACT_EMAIL,
-      contactPoint: { "@type": "ContactPoint", telephone: `+${WHATSAPP_NUMBER}`, contactType: "sales", availableLanguage: "es" },
+      ...(TORKEOS_WHATSAPP && { contactPoint: { "@type": "ContactPoint", telephone: `+${TORKEOS_WHATSAPP}`, contactType: "sales", availableLanguage: "es" } }),
     },
     { "@type": "WebSite", "@id": `${siteUrl}/#website`, url: siteUrl, name: "TorkeOS", inLanguage: "es", publisher: { "@id": `${siteUrl}/#organization` } },
     {
@@ -233,9 +243,9 @@ const jsonLd = {
         {
           "@type": "Offer",
           name: "Talleres",
-          price: "0",
+          price: String(fromPrice),
           priceCurrency: "USD",
-          description: `Comisión del ${commission}% sobre los presupuestos aceptados por los clientes. Sin cuota fija.`,
+          description: plansText(),
         },
       ],
     },
@@ -380,7 +390,7 @@ export default function HomePage() {
               <dl className="landing-fade-up mt-12 grid max-w-xl grid-cols-3 gap-4 border-t border-white/15 pt-6" style={delay(3)}>
                 {[
                   ["$0", "para clientes"],
-                  [`${commission}%`, "solo si aprueban"],
+                  [`$${fromPrice}`, "planes desde"],
                   ["100%", "desde el móvil"],
                 ].map(([value, label]) => (
                   <div key={label}>
@@ -601,20 +611,30 @@ export default function HomePage() {
                     <span className="grid size-12 place-items-center rounded-md bg-[#ef3f26]"><Wrench size={24} aria-hidden /></span>
                     <div>
                       <h3 className="font-display text-3xl font-bold">Dueños de taller</h3>
-                      <p className="text-sm text-stone-400">Todo el taller, un solo cobro</p>
+                      <p className="text-sm text-stone-400">Elige el plan que va con tu taller</p>
                     </div>
                   </div>
-                  <p className="mt-8 flex items-end gap-2">
-                    <span className="landing-gradient-text font-display text-7xl font-bold leading-none sm:text-8xl">{commission}%</span>
-                    <span className="pb-2 text-stone-400">por presupuesto aceptado</span>
-                  </p>
+                  <div className="mt-8 grid gap-3">
+                    {PLAN_KEYS.map((key) => {
+                      const plan = PLANS[key];
+                      return (
+                        <div key={key} className="rounded-lg border border-white/15 bg-white/5 p-4">
+                          <div className="flex items-baseline justify-between gap-3">
+                            <p className="font-display text-2xl font-bold">{plan.name}</p>
+                            <p className="landing-gradient-text font-display text-3xl font-bold">{plan.kind === "subscription" ? `$${plan.price}` : `${plan.percent}%`}<span className="text-sm font-normal text-stone-400">{plan.kind === "subscription" ? "/mes" : " de lo aprobado"}</span></p>
+                          </div>
+                          <p className="mt-1 text-sm text-stone-300">{plan.audience} · {plan.kind === "subscription" ? `hasta ${plan.vehicleLimit} vehículos al mes` : `vehículos ilimitados · mín. $${plan.minimum}, máx. $${plan.maximum}/mes`}</p>
+                        </div>
+                      );
+                    })}
+                    <p className="text-xs text-stone-400">Montos en USD a {RATE_NOTE} · Vehículo extra: ${EXTRA_VEHICLE_FEE} · Sucursal adicional: ${EXTRA_BRANCH_FEE}/mes · 30 días de prueba gratis.</p>
+                  </div>
                   <ul className="mt-8 grid gap-3 text-stone-200">
                     {[
-                      "Sin mensualidad ni costo de entrada",
                       "Página pública de reservas para tu taller",
-                      "Agenda, órdenes y equipo de mecánicos",
-                      "Diagnósticos y presupuestos digitales",
-                      "Mensajes de estado por WhatsApp",
+                      "Agenda, órdenes, sucursales y equipo de mecánicos",
+                      "Diagnósticos, presupuestos y pagos digitales",
+                      "Notificaciones automáticas a tus clientes",
                       "Reporte mensual de facturación",
                     ].map((item) => (
                       <li key={item} className="flex gap-3"><Check size={20} className="mt-0.5 shrink-0 text-[#ef3f26]" aria-hidden />{item}</li>

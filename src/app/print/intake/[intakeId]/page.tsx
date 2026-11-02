@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
+import { formatAppointmentDateTime } from "@/lib/appointments";
 import { TorkeMark } from "@/components/brand/torke-logo";
 import { IntakeDocument } from "@/components/intake/intake-summary";
 import { PrintButton } from "@/components/intake/print-button";
-import { getStaffGarage } from "@/lib/auth/garage-staff";
+import { getStaffGarage, staffCanAccessOrder } from "@/lib/auth/garage-staff";
 import { getOrderIntake } from "@/lib/intake-data";
 import { noIndex } from "@/lib/seo";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -13,7 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 
 type Params = { params: Promise<{ intakeId: string }> };
 
-const dateTime = new Intl.DateTimeFormat("es-VE", { dateStyle: "long", timeStyle: "short", timeZone: "America/Caracas" });
+const dateTime = { format: (value: Date) => formatAppointmentDateTime(value, "long") };
 
 /** Loads the intake only for admins, the garage's owner/managers or the vehicle's client. */
 const loadIntakeDocument = cache(async (intakeId: string) => {
@@ -24,7 +25,7 @@ const loadIntakeDocument = cache(async (intakeId: string) => {
   if (!admin) notFound();
 
   const { data: row } = await admin.from("vehicle_intakes").select("order_id").eq("id", intakeId).maybeSingle();
-  const { data: order } = row ? await admin.from("orders").select("id, garage_id, vehicle_id").eq("id", row.order_id).maybeSingle() : { data: null };
+  const { data: order } = row ? await admin.from("orders").select("id, garage_id, branch_id, vehicle_id").eq("id", row.order_id).maybeSingle() : { data: null };
   if (!order) notFound();
   const [{ data: vehicle }, { data: garage }] = await Promise.all([
     admin.from("vehicles").select("brand, model, year, plate, user_id").eq("id", order.vehicle_id).maybeSingle(),
@@ -34,7 +35,7 @@ const loadIntakeDocument = cache(async (intakeId: string) => {
 
   const role = user.app_metadata.role;
   const authorized = role === "admin"
-    || ((role === "garage_owner" || role === "garage_manager") && (await getStaffGarage(admin, user))?.garageId === order.garage_id)
+    || ((role === "garage_owner" || role === "garage_manager") && staffCanAccessOrder(await getStaffGarage(admin, user), order))
     || (role === "client" && vehicle.user_id === user.id);
   if (!authorized) redirect("/unauthorized");
 

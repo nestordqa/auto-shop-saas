@@ -8,7 +8,9 @@ export default async function ClientHomePage() {
   const user = await requireRole(["client"]);
   const { orders } = await loadClientPortal(user.id);
   const pending = orders.filter(({ status }) => status === "presupuestado");
-  const inProgress = orders.filter(({ status }) => status !== "presupuestado" && status !== "entregado");
+  // Delivered orders stay here until their payment is settled.
+  const settled = (order: (typeof orders)[number]) => !order.paymentMethods || order.payment?.status === "confirmed" || order.payment?.status === "received";
+  const inProgress = orders.filter((order) => order.status !== "presupuestado" && (order.status !== "entregado" || !settled(order)));
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">

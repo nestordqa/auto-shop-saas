@@ -7,13 +7,17 @@ import {
   CarFront,
   ClipboardList,
   FileDown,
+  LifeBuoy,
   FileSignature,
   Gauge,
   LogOut,
   Menu,
   ReceiptText,
   Settings,
+  Store,
+  Target,
   Users,
+  Wallet,
   Wrench,
   X,
 } from "lucide-react";
@@ -24,6 +28,7 @@ import { useEffect, useState } from "react";
 import { TorkeMark } from "@/components/brand/torke-logo";
 import { LiveRefresh } from "@/components/layout/live-refresh";
 import { NotificationSettings } from "@/components/pwa/notification-settings";
+import { torkeosWhatsAppUrl } from "@/lib/contact";
 import { unsubscribeFromPush } from "@/lib/push-client";
 import type { AppRole } from "@/types/domain";
 
@@ -40,17 +45,21 @@ const roleLabels: Record<AppRole, string> = {
 const navigation = {
   admin: [
     { label: "Resumen", href: "/dashboard/admin", icon: Gauge },
+    { label: "Prospectos", href: "/dashboard/admin/prospects", icon: Target },
     { label: "Talleres", href: "/dashboard/admin/garages", icon: Wrench },
     { label: "Usuarios", href: "/dashboard/admin/users", icon: Users },
     { label: "Catálogo", href: "/dashboard/admin/catalog", icon: CarFront },
     { label: "Contratos", href: "/dashboard/admin/contracts", icon: FileSignature },
     { label: "Notificaciones", href: "/dashboard/admin/notifications", icon: Bell },
     { label: "Facturación", href: "/dashboard/admin/billing", icon: ReceiptText },
+    { label: "Medios de pago", href: "/dashboard/admin/payment-methods", icon: Wallet },
   ],
   garage_owner: [
     { label: "Órdenes", href: "/dashboard/owner/orders", icon: ClipboardList },
     { label: "Agenda", href: "/dashboard/owner/agenda", icon: CalendarDays },
     { label: "Equipo", href: "/dashboard/owner/team", icon: Users },
+    { label: "Sucursales", href: "/dashboard/owner/branches", icon: Store },
+    { label: "Pagos", href: "/dashboard/owner/payments", icon: Wallet },
     { label: "Durabilidad", href: "/dashboard/owner/insights", icon: Activity },
     { label: "Facturación", href: "/dashboard/owner/billing", icon: ReceiptText },
   ],
@@ -79,6 +88,8 @@ type DashboardShellProps = {
 };
 
 export function DashboardShell({ children, role, userName, garageContext }: DashboardShellProps) {
+  // Support for every role: TorkeOS WhatsApp (NEXT_PUBLIC_TORKEOS_WHATSAPP), prefilled with who is asking.
+  const supportUrl = torkeosWhatsAppUrl(`Hola, necesito soporte con TorkeOS. Soy ${userName} (${roleLabels[role]}${garageContext ? ` · ${garageContext.name}` : ""}).`);
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const items = navigation[role];
@@ -128,7 +139,7 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
       </header>
 
       {menuOpen && (
-        <div className="fixed inset-x-0 top-16 z-30 border-b border-stone-200 bg-white p-4 shadow-xl md:hidden">
+        <div className="fixed inset-x-0 top-16 z-30 max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-b border-stone-200 bg-white p-4 shadow-xl md:hidden">
           <p className="mb-3 text-xs font-semibold uppercase text-stone-500">{roleLabels[role]}</p>
           <nav className="grid gap-2">
             {items.map(({ label, href, icon: Icon }) => (
@@ -137,6 +148,7 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
               </Link>
             ))}
           </nav>
+          {supportUrl && <a href={supportUrl} target="_blank" rel="noopener noreferrer" className="mt-2 flex min-h-12 items-center gap-3 rounded-md bg-emerald-50 px-4 font-semibold text-emerald-800"><LifeBuoy size={20} /> Soporte</a>}
           <a href={DOCS_HREF} download className="mt-2 flex min-h-12 items-center gap-3 rounded-md bg-stone-100 px-4 font-semibold">
             <FileDown size={20} /> Documentación (PDF)
           </a>
@@ -149,7 +161,7 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
         </div>
       )}
 
-      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-stone-800 bg-[#171a1f] p-5 text-white md:flex">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col overflow-y-auto overscroll-contain border-r border-stone-800 bg-[#171a1f] p-5 text-white md:flex">
         <Link href={`/dashboard/${role === "garage_owner" || role === "garage_manager" ? "owner" : role}`} className="flex items-center gap-3 text-xl font-bold">
           <TorkeMark className="size-10" title="" />
           {brandName}
@@ -164,6 +176,7 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
               </Link>
             );
           })}
+          {supportUrl && <a href={supportUrl} target="_blank" rel="noopener noreferrer" className="flex min-h-12 items-center gap-3 rounded-md px-3 font-medium text-emerald-300 hover:bg-white/10"><LifeBuoy size={20} /> Soporte</a>}
           <a href={DOCS_HREF} download className="flex min-h-12 items-center gap-3 rounded-md px-3 font-medium text-stone-300 hover:bg-white/10">
             <FileDown size={20} /> Documentación
           </a>
@@ -183,8 +196,8 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
       <LiveRefresh />
       <main className="min-w-0 pb-24 md:ml-64 md:pb-8">{children}</main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid h-20 border-t border-stone-200 bg-white px-2 pb-[env(safe-area-inset-bottom)] md:hidden" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
-        {items.map(({ label, href, icon: Icon }) => (
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid h-20 border-t border-stone-200 bg-white px-2 pb-[env(safe-area-inset-bottom)] md:hidden" style={{ gridTemplateColumns: `repeat(${Math.min(items.length, 5)}, minmax(0, 1fr))` }}>
+        {items.slice(0, 5).map(({ label, href, icon: Icon }) => (
           <Link key={label} href={href} onClick={(event) => navigateToSection(event, href)} className="flex min-w-0 flex-col items-center justify-center gap-1 text-[11px] font-semibold text-stone-600">
             <Icon size={22} className={isActive(href) ? "text-[#ef3f26]" : ""} />
             <span className="max-w-full truncate">{label}</span>
