@@ -55,7 +55,7 @@ function plansText() {
 }
 
 const title = "TorkeOS · Software para talleres mecánicos: citas, diagnósticos y presupuestos";
-const description = `Gestiona tu taller mecánico desde el teléfono: agenda online, órdenes de trabajo, diagnósticos, presupuestos aprobados por el cliente y avisos por WhatsApp. Gratis para clientes; planes para talleres desde $${fromPrice} al mes.`;
+const description = `Gestiona tu taller mecánico desde el teléfono: agenda online, órdenes de trabajo, diagnósticos, presupuestos aprobados por el cliente, pagos y notificaciones automáticas. Gratis para clientes; planes para talleres desde $${fromPrice} al mes.`;
 
 export const metadata: Metadata = {
   title: { absolute: title },
@@ -95,19 +95,19 @@ const ownerSteps: Step[] = [
   {
     icon: Users,
     title: "Arma tu equipo",
-    body: "Registra a tus mecánicos con su especialidad (frenos, electroauto, motores, transmisiones…) y actívalos o desactívalos cuando quieras.",
+    body: "Registra a tus mecánicos y encargados por sucursal, con su especialidad (frenos, electroauto, latonería, car audio…), y muévelos o desactívalos cuando quieras.",
   },
   {
     icon: CalendarCheck,
     status: ORDER_STATUS_LABELS.por_ingresar,
     title: "Recibe citas sin cruces",
-    body: "Tus clientes reservan en bloques de 30 minutos entre 8:00 y 18:00. La agenda impide dos citas en el mismo horario. También puedes crear órdenes tú mismo.",
+    body: "Defines tu horario de atención por sucursal y bloqueas vacaciones o feriados. Tus clientes reservan cada 30 minutos dentro de ese horario, sin cruces. También puedes crear órdenes tú mismo.",
   },
   {
     icon: Car,
     status: ORDER_STATUS_LABELS.ingresado,
     title: "Recepción del vehículo",
-    body: "Asignas un mecánico a la orden y él registra el ingreso del vehículo, con fecha y hora.",
+    body: "Registras el ingreso con kilometraje, accesorios, daños, fotos y firmas, y asignas un mecánico, que recibe la notificación al instante.",
   },
   {
     icon: Stethoscope,
@@ -119,7 +119,7 @@ const ownerSteps: Step[] = [
     icon: FileText,
     status: ORDER_STATUS_LABELS.presupuestado,
     title: "Publicas el presupuesto",
-    body: "Revisas los montos, indicas si incluye repuestos y lo publicas. Avisas al cliente por WhatsApp con un solo toque.",
+    body: "Revisas los montos, indicas si incluye repuestos y lo publicas. Tu cliente recibe una notificación al instante para revisarlo y decidir.",
   },
   {
     icon: Hammer,
@@ -132,7 +132,7 @@ const ownerSteps: Step[] = [
     icon: KeyRound,
     status: `${ORDER_STATUS_LABELS.listo_para_entregar} → ${ORDER_STATUS_LABELS.entregado}`,
     title: "Entrega y cierre",
-    body: "Marcas el vehículo como listo, el cliente recibe el aviso y cierras la orden con la entrega.",
+    body: "El cliente paga en línea con tus métodos de pago (o en el taller), confirmas el pago, le avisas que está listo y cierras la orden con la entrega.",
   },
   {
     icon: Receipt,
@@ -168,7 +168,7 @@ const clientSteps: Step[] = [
     icon: ClipboardList,
     status: ORDER_STATUS_LABELS.presupuestado,
     title: "Mira el presupuesto",
-    body: "Recibes cada trabajo con su precio, el total y si incluye repuestos. Todo claro antes de pagar.",
+    body: "Te llega una notificación con el presupuesto: cada trabajo con su precio, el total y si incluye repuestos. Todo claro antes de pagar.",
   },
   {
     icon: ShieldCheck,
@@ -179,13 +179,13 @@ const clientSteps: Step[] = [
     icon: Bell,
     status: ORDER_STATUS_LABELS.en_reparacion,
     title: "Sigue la reparación",
-    body: "Te avisamos por WhatsApp cada vez que tu vehículo cambia de estado.",
+    body: "Recibes una notificación en tu teléfono cada vez que tu vehículo cambia de estado.",
   },
   {
     icon: KeyRound,
     status: ORDER_STATUS_LABELS.entregado,
     title: "Retira tu vehículo",
-    body: "Cuando esté listo, te avisamos para que lo busques. Orden cerrada, historial guardado.",
+    body: "Paga desde la app o en el taller y te avisamos cuando esté listo para buscarlo. Orden cerrada, historial guardado.",
   },
 ];
 
@@ -200,11 +200,15 @@ const faqs = [
   },
   {
     q: "¿Necesito instalar algo?",
-    a: "No. TorkeOS funciona en el navegador de cualquier teléfono, tablet o computadora, y puedes agregarlo a tu pantalla de inicio como una app.",
+    a: "No es obligatorio: funciona en el navegador de cualquier teléfono, tablet o computadora. Te recomendamos agregarlo a tu pantalla de inicio como app y activar las notificaciones para enterarte de todo al instante.",
+  },
+  {
+    q: "¿Mis clientes pueden pagar desde la app?",
+    a: "Sí. Cargas tus métodos de pago (Pago móvil, transferencia, Binance, Zelle o PayPal), con descuento opcional por método. El cliente paga, sube el comprobante y tú lo confirmas; también puede elegir pagar en el taller.",
   },
   {
     q: "¿Cómo se enteran mis clientes del estado de su vehículo?",
-    a: "Desde cada orden envías por WhatsApp un mensaje con el estado del vehículo y, si aplica, el detalle completo del presupuesto.",
+    a: "Automáticamente: reciben notificaciones en su teléfono cuando el vehículo ingresa, cuando el presupuesto está listo, durante la reparación y cuando pueden retirarlo, además de un recordatorio antes de su cita. Si quieres, también puedes enviarles el estado por WhatsApp desde la orden.",
   },
   {
     q: "¿Puedo trabajar con varios mecánicos?",
@@ -590,7 +594,7 @@ export default function HomePage() {
                     "Agenda online con tu taller",
                     "Presupuestos detallados por trabajo",
                     "Apruebas o rechazas desde el teléfono",
-                    "Avisos de estado por WhatsApp",
+                    "Notificaciones en cada paso de tu vehículo",
                   ].map((item) => (
                     <li key={item} className="flex gap-3"><Check size={20} className="mt-0.5 shrink-0 text-[#ef3f26]" aria-hidden />{item}</li>
                   ))}
