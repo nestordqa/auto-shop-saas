@@ -23,20 +23,26 @@ export function isPushConfigured() {
   return configured;
 }
 
-/** Sends to every device of each user; subscriptions the push service reports as gone are deleted. */
+/** Sends to every device of each user; subscriptions the push service reports as gone are deleted. Returns the devices reached. */
 export async function sendPush(admin: SupabaseClient, userIds: string[], payload: PushPayload) {
   const recipients = [...new Set(userIds)];
-  if (!recipients.length || !isPushConfigured()) return;
-  const { data: subscriptions } = await admin.from("push_subscriptions").select("id, endpoint, p256dh, auth").in("user_id", recipients);
+  if (!recipients.length || !isPushConfigured()) return 0;
+  // Chunked: a long `in` list would overflow the request URL (mass notifications reach every user).
+  const chunks = Array.from({ length: Math.ceil(recipients.length / 150) }, (_, index) => recipients.slice(index * 150, (index + 1) * 150));
+  const results = await Promise.all(chunks.map((ids) => admin.from("push_subscriptions").select("id, endpoint, p256dh, auth").in("user_id", ids)));
+  const subscriptions = results.flatMap((result) => result.data ?? []);
   const body = JSON.stringify(payload);
+  let delivered = 0;
 
   await Promise.all((subscriptions ?? []).map(async (subscription) => {
     try {
       await webpush.sendNotification({ endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } }, body, { TTL: 60 * 60 * 24 });
+      delivered += 1;
     } catch (error) {
       const status = (error as { statusCode?: number }).statusCode;
       if (status === 404 || status === 410) await admin.from("push_subscriptions").delete().eq("id", subscription.id);
       else console.error("[push] send failed", status ?? error);
     }
   }));
+  return delivered;
 }

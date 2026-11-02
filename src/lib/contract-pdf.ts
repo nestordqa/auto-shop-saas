@@ -1,0 +1,134 @@
+import "server-only";
+
+import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from "pdf-lib";
+
+import { NUT_PATH, T_PATH } from "@/lib/brand";
+import { contractCode, contractTitle, CYCLE_DESCRIPTIONS, CYCLE_LABELS, formatDate, PAYMENT_GRACE_DAYS, TRIAL_DAYS, type Contract } from "@/lib/contracts";
+
+export type ContractPdfInput = {
+  contract: Contract;
+  garage: { name: string; address: string };
+  owner: { fullName: string; documentId: string | null; phone: string | null; email: string | null };
+};
+
+const signal = rgb(0.937, 0.247, 0.149);
+const ink = rgb(0.09, 0.1, 0.12);
+const muted = rgb(0.4, 0.4, 0.4);
+const margin = 56;
+
+/** A4 contract with the TorkeOS mark; Helvetica (WinAnsi) covers Spanish accents and ñ. */
+export async function buildContractPdf({ contract, garage, owner }: ContractPdfInput) {
+  const pdf = await PDFDocument.create();
+  pdf.setTitle(`${contractTitle(contract)} ${contractCode(contract.number)} - ${garage.name}`);
+  pdf.setAuthor("TorkeOS");
+  const regular = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  let page = pdf.addPage([595.28, 841.89]);
+  const { width, height } = page.getSize();
+  const textWidth = width - margin * 2;
+  let y = height - margin;
+
+  const ensureSpace = (needed: number) => {
+    if (y - needed > margin + 20) return;
+    page = pdf.addPage([595.28, 841.89]);
+    y = height - margin;
+  };
+  const paragraph = (text: string, { font = regular, size = 10.5, color = ink, gap = 6 }: { font?: PDFFont; size?: number; color?: ReturnType<typeof rgb>; gap?: number } = {}) => {
+    for (const line of wrap(text, font, size, textWidth)) {
+      ensureSpace(size + 4);
+      page.drawText(line, { x: margin, y, size, font, color });
+      y -= size + 4;
+    }
+    y -= gap;
+  };
+
+  // Header: mark + wordmark on the left, contract code on the right.
+  drawMark(page, margin, y + 6, 40);
+  page.drawText("TORKE", { x: margin + 50, y: y - 26, size: 22, font: bold, color: ink });
+  page.drawText("OS", { x: margin + 50 + bold.widthOfTextAtSize("TORKE", 22), y: y - 26, size: 22, font: bold, color: signal });
+  const code = contractCode(contract.number);
+  page.drawText(code, { x: width - margin - bold.widthOfTextAtSize(code, 12), y: y - 12, size: 12, font: bold, color: ink });
+  const issued = `Emitido el ${formatDate(contract.created_at.slice(0, 10))}`;
+  page.drawText(issued, { x: width - margin - regular.widthOfTextAtSize(issued, 9), y: y - 27, size: 9, font: regular, color: muted });
+  y -= 52;
+  page.drawRectangle({ x: margin, y, width: textWidth, height: 2, color: signal });
+  y -= 30;
+
+  paragraph(contractTitle(contract).toUpperCase(), { font: bold, size: 16, gap: 4 });
+  paragraph(contract.kind === "trial" ? "Primer mes de cortesía" : `Plan ${CYCLE_LABELS[contract.billing_cycle!].toLowerCase()} · comisión del ${Number(contract.commission_percent)}%`, { size: 11, color: signal, gap: 14 });
+
+  paragraph("PARTES", { font: bold, size: 11, gap: 2 });
+  paragraph("Proveedor: TorkeOS, plataforma de gestión para talleres automotrices.");
+  paragraph(`Taller: ${garage.name}, ubicado en ${garage.address}.`);
+  paragraph(`Representante: ${owner.fullName}${owner.documentId ? `, documento ${owner.documentId}` : ""}${owner.email ? `, ${owner.email}` : ""}${owner.phone ? `, teléfono ${owner.phone}` : ""}.`, { gap: 14 });
+
+  paragraph("CLÁUSULAS", { font: bold, size: 11, gap: 4 });
+  clauses(contract).forEach(([title, body], index) => {
+    paragraph(`${index + 1}. ${title}`, { font: bold, size: 10.5, gap: 1 });
+    paragraph(body, { gap: 8 });
+  });
+
+  // Signatures.
+  ensureSpace(110);
+  y -= 50;
+  const columnWidth = (textWidth - 40) / 2;
+  [["TorkeOS", "Proveedor"], [owner.fullName, garage.name]].forEach(([name, role], index) => {
+    const x = margin + index * (columnWidth + 40);
+    page.drawLine({ start: { x, y }, end: { x: x + columnWidth, y }, thickness: 0.8, color: muted });
+    page.drawText(name, { x, y: y - 14, size: 10, font: bold, color: ink });
+    page.drawText(role, { x, y: y - 27, size: 9, font: regular, color: muted });
+  });
+
+  pdf.getPages().forEach((item, index, pages) => {
+    const footer = `TorkeOS · ${code} · Página ${index + 1} de ${pages.length}`;
+    item.drawText(footer, { x: (width - regular.widthOfTextAtSize(footer, 8)) / 2, y: 30, size: 8, font: regular, color: muted });
+  });
+
+  return pdf.save();
+}
+
+function clauses(contract: Contract): [string, string][] {
+  const start = formatDate(contract.start_date);
+  const service: [string, string] = ["Objeto", "TorkeOS otorga al Taller acceso a su plataforma para gestionar citas, recepción de vehículos, órdenes de trabajo, diagnósticos, presupuestos, equipo y notificaciones a sus clientes."];
+  const data: [string, string] = ["Datos", "La información de clientes, vehículos y órdenes registrada por el Taller le pertenece. TorkeOS la trata de forma confidencial y solo para prestar el servicio."];
+  if (contract.kind === "trial") {
+    return [
+      service,
+      ["Vigencia", `El período de prueba dura ${TRIAL_DAYS} días calendario, desde el ${start} hasta el ${formatDate(contract.end_date!)}, ambos inclusive.`],
+      ["Cortesía", "Este primer mes se otorga como cortesía, sin costo alguno para el Taller y con acceso a todas las funciones de la plataforma."],
+      ["Continuidad", "Al finalizar la prueba, TorkeOS enviará al Taller un nuevo contrato con el plan y las condiciones de pago. Para seguir usando la plataforma, el Taller deberá aceptarlo; si no lo hace, el acceso podrá suspenderse sin que se pierdan sus datos."],
+      data,
+    ];
+  }
+  const cycle = contract.billing_cycle!;
+  const percent = Number(contract.commission_percent);
+  return [
+    service,
+    ["Tarifa", `El Taller pagará a TorkeOS una comisión del ${percent}% sobre el monto total de los presupuestos aceptados por sus clientes a través de la plataforma. No hay cuota fija: si en un período no hay presupuestos aceptados, no hay nada que pagar.`],
+    ["Plan de pago", `Plan ${CYCLE_LABELS[cycle].toLowerCase()}: la comisión se liquida ${CYCLE_DESCRIPTIONS[cycle]}, contados desde el ${start}. El pago vence ${PAYMENT_GRACE_DAYS} días después del cierre de cada período.`],
+    ["Vigencia", `Este contrato rige desde el ${start}${contract.end_date ? ` hasta el ${formatDate(contract.end_date)}` : " por tiempo indefinido"}. Cualquiera de las partes puede terminarlo avisando por escrito con 15 días de anticipación; los períodos ya cerrados deben pagarse.`],
+    ["Falta de pago", "Si un período queda vencido sin pagarse, TorkeOS podrá suspender el acceso a la plataforma hasta regularizar el pago, sin que el Taller pierda sus datos."],
+    data,
+  ];
+}
+
+function drawMark(page: PDFPage, x: number, y: number, size: number) {
+  const scale = size / 120;
+  page.drawSvgPath(NUT_PATH, { x, y, scale, color: signal });
+  page.drawSvgPath(T_PATH, { x, y, scale, color: rgb(1, 1, 1) });
+}
+
+function wrap(text: string, font: PDFFont, size: number, maxWidth: number) {
+  const lines: string[] = [];
+  let line = "";
+  for (const word of text.split(/\s+/)) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (font.widthOfTextAtSize(candidate, size) <= maxWidth) line = candidate;
+    else {
+      if (line) lines.push(line);
+      line = word;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}

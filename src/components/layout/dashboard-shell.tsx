@@ -2,10 +2,12 @@
 
 import {
   Activity,
+  Bell,
   CalendarDays,
   CarFront,
   ClipboardList,
   FileDown,
+  FileSignature,
   Gauge,
   LogOut,
   Menu,
@@ -41,6 +43,8 @@ const navigation = {
     { label: "Talleres", href: "/dashboard/admin/garages", icon: Wrench },
     { label: "Usuarios", href: "/dashboard/admin/users", icon: Users },
     { label: "Catálogo", href: "/dashboard/admin/catalog", icon: CarFront },
+    { label: "Contratos", href: "/dashboard/admin/contracts", icon: FileSignature },
+    { label: "Notificaciones", href: "/dashboard/admin/notifications", icon: Bell },
     { label: "Facturación", href: "/dashboard/admin/billing", icon: ReceiptText },
   ],
   garage_owner: [

@@ -4,6 +4,8 @@ export const APPOINTMENT_TIMES = Array.from({ length: 21 }, (_, index) => {
 });
 
 export const GARAGE_TIME_ZONE = "America/Caracas";
+/** Caracas is UTC-4 all year (no DST), in `Date#getTimezoneOffset` minutes. */
+export const GARAGE_TIMEZONE_OFFSET = 240;
 
 export function appointmentIso(date: string, time: string, timezoneOffset: number) {
   const [year, month, day] = date.split("-").map(Number);

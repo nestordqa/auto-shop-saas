@@ -2,11 +2,14 @@ import { CalendarDays, RotateCcw } from "lucide-react";
 import Link from "next/link";
 
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
+import { UnavailabilityManager } from "@/components/owner/unavailability-manager";
 import { TablePagination } from "@/components/ui/table-pagination";
 import {
   appointmentDateKey,
   appointmentMonthKey,
+  formatAppointmentDate,
   formatAppointmentDateTime,
+  GARAGE_TIME_ZONE,
 } from "@/lib/appointments";
 import { requireOwnerGarage } from "@/lib/auth/require-owner-garage";
 import {
@@ -35,7 +38,22 @@ export default async function OwnerAgendaPage({
       </div>
     );
   const month = getBillingMonth(requestedMonth);
-  const { rows } = await getOwnerOrders(dataClient, garage.id);
+  const [{ rows }, { data: blockRows }] = await Promise.all([
+    getOwnerOrders(dataClient, garage.id),
+    dataClient
+      .from("garage_unavailability")
+      .select("id, starts_at, ends_at, reason")
+      .eq("garage_id", garage.id)
+      .gt("ends_at", new Date().toISOString())
+      .order("starts_at"),
+  ]);
+  const now = new Date();
+  const blocks = (blockRows ?? []).map((block) => ({
+    id: block.id as string,
+    label: formatBlockRange(block.starts_at, block.ends_at),
+    reason: block.reason as string | null,
+    active: new Date(block.starts_at) <= now,
+  }));
   const appointments = rows
     .filter((order) => appointmentMonthKey(order.appointmentDate) === month)
     .sort((first, second) =>
@@ -78,6 +96,7 @@ export default async function OwnerAgendaPage({
           <p className="text-3xl font-bold">{todayCount}</p>
         </article>
       </section>
+      <UnavailabilityManager blocks={blocks} today={today} />
       <form className="mt-5 flex flex-col gap-2 rounded-lg border border-stone-200 bg-white p-3 sm:flex-row">
         <select
           name="month"
@@ -155,4 +174,18 @@ export default async function OwnerAgendaPage({
       </section>
     </div>
   );
+}
+
+const timeOfDay = (value: string) =>
+  new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: GARAGE_TIME_ZONE }).format(new Date(value));
+
+/** Whole days (midnight to midnight) read as dates only; otherwise date and time at both ends. */
+function formatBlockRange(startsAt: string, endsAt: string) {
+  if (timeOfDay(startsAt) === "00:00" && timeOfDay(endsAt) === "00:00") {
+    const lastDay = new Date(new Date(endsAt).getTime() - 1);
+    const first = formatAppointmentDate(startsAt, "medium");
+    const last = formatAppointmentDate(lastDay, "medium");
+    return first === last ? first : `${first} – ${last}`;
+  }
+  return `${formatAppointmentDateTime(startsAt)} – ${formatAppointmentDateTime(endsAt)}`;
 }

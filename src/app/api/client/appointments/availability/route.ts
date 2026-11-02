@@ -4,6 +4,7 @@ import { z } from "zod";
 import { appointmentIso, APPOINTMENT_TIMES } from "@/lib/appointments";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getUnavailableRanges, isBlocked } from "@/lib/unavailability";
 
 const querySchema = z.object({
   garageId: z.uuid(),
@@ -24,12 +25,15 @@ export async function GET(request: Request) {
   if (!garage) return NextResponse.json({ error: "El taller no existe." }, { status: 404 });
   const start = appointmentIso(date, "08:00", timezoneOffset);
   const end = appointmentIso(date, "18:00", timezoneOffset);
-  const { data: orders } = await admin.from("orders").select("appointment_date").eq("garage_id", garageId).gte("appointment_date", start).lte("appointment_date", end);
+  const [{ data: orders }, blocked] = await Promise.all([
+    admin.from("orders").select("appointment_date").eq("garage_id", garageId).gte("appointment_date", start).lte("appointment_date", end),
+    getUnavailableRanges(admin, garageId, start, end),
+  ]);
   const occupied = new Set((orders ?? []).map(({ appointment_date }) => new Date(appointment_date).getTime()));
   const now = Date.now();
   const slots = APPOINTMENT_TIMES.filter((time) => {
     const timestamp = new Date(appointmentIso(date, time, timezoneOffset)).getTime();
-    return timestamp > now && !occupied.has(timestamp);
+    return timestamp > now && !occupied.has(timestamp) && !isBlocked(blocked, timestamp);
   });
   return NextResponse.json({ slots });
 }

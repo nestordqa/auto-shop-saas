@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { phoneSchema } from "@/lib/phone";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-const registerSchema = z.object({ fullName: z.string().trim().min(2).max(120), email: z.email(), phone: z.string().trim().min(7).max(30), documentId: z.string().trim().min(4).max(30), password: z.string().min(8).max(72), nextPath: z.string().optional() });
+const registerSchema = z.object({ fullName: z.string().trim().min(2).max(120), email: z.email(), phone: phoneSchema, documentId: z.string().trim().min(4).max(30), password: z.string().min(8).max(72), nextPath: z.string().optional() });
 
 export async function POST(request: Request) {
   const parsed = registerSchema.safeParse(await request.json().catch(() => null));

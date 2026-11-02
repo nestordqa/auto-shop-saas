@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { phoneSchema } from "@/lib/phone";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { toUrlSlug } from "@/lib/slugs";
@@ -18,7 +19,7 @@ const garageSchema = z.discriminatedUnion("ownerMode", [
     ownerMode: z.literal("new"),
     ownerName: z.string().trim().min(2).max(120),
     ownerEmail: z.email(),
-    ownerPhone: z.string().trim().min(7).max(30),
+    ownerPhone: phoneSchema,
     ownerDocument: z.string().trim().min(4).max(30),
     temporaryPassword: z.string().min(8).max(72),
     name: z.string().trim().min(2).max(120),

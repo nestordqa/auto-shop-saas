@@ -1,3 +1,4 @@
+import { whatsAppDigits } from "@/lib/phone";
 import { ORDER_STATUS_LABELS, type OrderStatus } from "@/types/domain";
 
 type WhatsAppStatusMessage = {
@@ -29,9 +30,7 @@ const statusCopy: Record<OrderStatus, string> = {
 };
 
 export function normalizeWhatsAppPhone(phone: string) {
-  const digits = phone.replace(/\D/g, "").replace(/^0+/, "");
-  if (!digits) return "";
-  return digits.startsWith("58") ? digits : `58${digits}`;
+  return whatsAppDigits(phone);
 }
 
 export function buildWhatsAppStatusMessage({

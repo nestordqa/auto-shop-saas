@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { phoneSchema } from "@/lib/phone";
 import { authorizeStaffRequest } from "@/lib/auth/garage-staff";
 import { notifyAppointmentCreated, notifyMechanicAssigned } from "@/lib/notifications";
 import { getOpenOrderForVehicle, openOrderMessage } from "@/lib/order-status";
@@ -11,7 +12,7 @@ const clientSchema = z.discriminatedUnion("mode", [
     mode: z.literal("new"),
     fullName: z.string().trim().min(2).max(120),
     email: z.email(),
-    phone: z.string().trim().min(7).max(30),
+    phone: phoneSchema,
     documentId: z.string().trim().min(4).max(30),
     temporaryPassword: z.string().min(8).max(72),
   }),

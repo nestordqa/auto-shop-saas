@@ -6,6 +6,7 @@ import { notifyAppointmentCreated } from "@/lib/notifications";
 import { getOpenOrderForVehicle, openOrderMessage } from "@/lib/order-status";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getUnavailableRanges, isBlocked } from "@/lib/unavailability";
 
 const appointmentSchema = z.object({
   garageId: z.uuid(),
@@ -31,6 +32,8 @@ export async function POST(request: Request) {
     admin.from("vehicles").select("id").eq("id", vehicleId).eq("user_id", user.id).maybeSingle(),
   ]);
   if (!garage || !vehicle) return NextResponse.json({ error: "El taller o vehículo seleccionado no es válido." }, { status: 400 });
+  const blocked = await getUnavailableRanges(admin, garage.id, appointmentDate, appointmentDate);
+  if (isBlocked(blocked, new Date(appointmentDate).getTime())) return NextResponse.json({ error: "El taller no está disponible en ese horario. Selecciona otro." }, { status: 409 });
   const openOrder = await getOpenOrderForVehicle(admin, vehicle.id);
   if (openOrder) return NextResponse.json({ error: openOrderMessage(openOrder.status) }, { status: 409 });
   const { data: order, error } = await admin.from("orders").insert({ garage_id: garage.id, vehicle_id: vehicle.id, mechanic_id: null, appointment_date: appointmentDate }).select("id").single();

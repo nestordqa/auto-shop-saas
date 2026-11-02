@@ -21,6 +21,10 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
 
+  if (error?.code === "user_banned") {
+    return NextResponse.json({ error: "Tu cuenta está desactivada. Contacta al administrador." }, { status: 403 });
+  }
+
   if (error || !data.user) {
     return NextResponse.json(
       { error: "Correo o contraseña incorrectos." },
@@ -40,5 +44,7 @@ export async function POST(request: Request) {
 
   const nextPath = parsed.data.nextPath;
   const safeNextPath = nextPath?.startsWith("/") && !nextPath.startsWith("//") ? nextPath : undefined;
-  return NextResponse.json({ redirectTo: role === "client" && safeNextPath ? safeNextPath : roleRoutes[role] });
+  // Clients go back to the garage page they came from; anyone can come back to a contract PDF link.
+  const allowNext = safeNextPath && (role === "client" || safeNextPath.startsWith("/api/contracts/"));
+  return NextResponse.json({ redirectTo: allowNext ? safeNextPath : roleRoutes[role] });
 }
