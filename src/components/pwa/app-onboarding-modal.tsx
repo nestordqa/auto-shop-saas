@@ -78,8 +78,9 @@ export function AppOnboardingModal() {
   const android = isAndroid();
 
   return (
-    <div className="fixed inset-0 z-60 flex items-end bg-black/70 sm:items-center sm:justify-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
-      <div className="max-h-[92dvh] w-full overflow-y-auto rounded-t-lg bg-white shadow-2xl sm:max-w-md sm:rounded-lg">
+    // Centered card that always fits the visible screen (browser bars and notch included) and scrolls inside.
+    <div className="fixed inset-0 z-60 flex items-center justify-center overflow-y-auto overscroll-contain bg-black/70 px-4 py-[max(1rem,env(safe-area-inset-top))]" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-lg bg-white shadow-2xl">
         <div className="flex items-center gap-3 border-b border-stone-200 p-5">
           <span className="grid size-10 place-items-center rounded-md bg-[#ef3f26] text-white">{step === "install" ? <Smartphone size={20} /> : <BellRing size={20} />}</span>
           <h2 id="onboarding-title" className="text-xl font-bold">{step === "install" ? "Instala la app de TorkeOS" : step === "notify" ? "Activa las notificaciones" : "Notificaciones bloqueadas"}</h2>
