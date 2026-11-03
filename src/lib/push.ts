@@ -16,8 +16,8 @@ let configured: boolean | null = null;
 
 export function isPushConfigured() {
   if (configured !== null) return configured;
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim().replace(/^["']|["']$/g, "");
+  const privateKey = process.env.VAPID_PRIVATE_KEY?.trim().replace(/^["']|["']$/g, "");
   configured = Boolean(publicKey && privateKey);
   if (configured) webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:soporte@torkeos.com", publicKey!, privateKey!);
   return configured;
