@@ -57,6 +57,14 @@ export async function BillingGate({ garage, role, children }: { garage: { id: st
 
   return (
     <>
+      {isOwner && status.current?.status === "active" && !status.current.signed_at && (
+        <div className="mx-auto w-full max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
+          <p className="flex flex-col gap-2 rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900 sm:flex-row sm:items-center sm:justify-between">
+            <span>Tienes un contrato pendiente de firma{status.current.kind === "trial" ? " (prueba gratis, $0)" : ""}. Revísalo y fírmalo desde tu teléfono.</span>
+            <Link href={`/dashboard/owner/contracts/${status.current.id}`} className="shrink-0 rounded-md bg-sky-700 px-4 py-2 text-center font-bold text-white">Firmar contrato</Link>
+          </p>
+        </div>
+      )}
       {isOwner && status.daysOverdue > 0 && (
         <div className="mx-auto w-full max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
           <p className="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">

@@ -83,7 +83,8 @@ export default async function ContractDetailPage({ params, searchParams }: { par
       <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
         <h2 className="font-display text-xl font-bold">Condiciones</h2>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
-          <Item label="Tipo" value={contract.kind === "trial" ? "Mes de prueba (cortesía)" : "Contrato de pago"} />
+          <Item label="Tipo" value={contract.kind === "trial" ? "Mes de prueba ($0)" : "Contrato de pago"} />
+          <Item label="Firma del owner" value={contract.signed_at ? `Firmado por ${contract.owner_signed_name ?? "el owner"} el ${new Intl.DateTimeFormat("es-VE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Caracas" }).format(new Date(contract.signed_at))}` : "Pendiente: el owner lo firma desde su panel (Facturación)"} />
           <Item label="Vigencia" value={`${formatDate(contract.start_date)} → ${contract.end_date ? formatDate(contract.end_date) : "indefinida"}`} />
           {contract.kind === "paid" && <><Item label="Plan" value={contract.plan ? planSummary(contract.plan) : `Comisión del ${Number(contract.commission_percent)}% (plan anterior)`} /><Item label="Ciclo de cobro" value={CYCLE_LABELS[contract.billing_cycle!]} /><Item label="Vencimiento" value={`Al cierre de cada período · suspensión tras ${LOCK_AFTER_DAYS} días de mora`} /></>}
           <Item label="Owner" value={[owner.full_name, owner.document_id, ownerAuth.user?.email, owner.phone].filter(Boolean).join(" · ")} />

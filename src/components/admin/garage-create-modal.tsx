@@ -70,10 +70,10 @@ export function GarageCreateModal({ owners, prospects = [], specialties }: { own
             <div className="grid gap-5 p-4 sm:p-6">
               <div className="flex items-start gap-3 rounded-md bg-emerald-50 p-4 text-emerald-900">
                 <CheckCircle2 className="mt-0.5 shrink-0" size={22} />
-                <p><strong>{created.name}</strong> ya está activo. Envíale al owner por WhatsApp su enlace de reservas{created.credentials ? ", su correo y su contraseña temporal" : ""}.</p>
+                <p><strong>{created.name}</strong> ya está activo. Envíale al owner por WhatsApp su enlace de reservas{created.credentials ? ", su acceso" : ""}{created.contractId ? " y su contrato para firmar" : ""}.</p>
               </div>
               {created.contractId ? <p className="rounded-md border border-stone-200 bg-stone-50 p-3 text-sm">Contrato generado{created.trialEnds ? <> · <strong>prueba gratis ($0) hasta el {created.trialEnds}</strong></> : null}. <a href={`/dashboard/admin/contracts/${created.contractId}`} className="font-bold text-[#d9341d] underline">Ver y enviar contrato</a></p> : <p className="rounded-md bg-amber-50 p-3 text-sm font-semibold text-amber-900">No se pudo generar el contrato automáticamente. Créalo desde Contratos.</p>}
-              <GarageLinkShare name={created.name} slug={created.slug} ownerPhone={created.ownerPhone} variant="full" credentials={created.credentials} />
+              <GarageLinkShare name={created.name} slug={created.slug} ownerPhone={created.ownerPhone} variant="full" credentials={created.credentials} contract={created.contractId ? { id: created.contractId, trialEnds: created.trialEnds } : undefined} />
               <button type="button" onClick={close} className="min-h-12 rounded-md border border-stone-300 px-5 font-bold">Listo</button>
             </div>
           ) : (

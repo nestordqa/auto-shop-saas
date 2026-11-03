@@ -21,7 +21,7 @@ export function ContractShare({ contract, garageName, owner }: ContractShareProp
   const [copied, setCopied] = useState(false);
   const pdfPath = `/api/contracts/${contract.id}/pdf`;
   const template = useMessageTemplate("contract_new");
-  const message = buildContractMessage({ contract, garageName, ownerName: owner.fullName, pdfUrl: `${origin}${pdfPath}` }, template);
+  const message = buildContractMessage({ contract, garageName, ownerName: owner.fullName, pdfUrl: `${origin}/dashboard/owner/contracts/${contract.id}` }, template);
   const phone = owner.phone ? normalizeWhatsAppPhone(owner.phone) : "";
   const subject = `Nuevo contrato TorkeOS ${contractCode(contract.number)} · ${garageName}`;
 

@@ -13,6 +13,10 @@ export type ContractPdfInput = {
   /** Active branches, main first; listed when there is more than one. */
   branches?: { name: string; address: string }[];
   owner: { fullName: string; documentId: string | null; phone: string | null; email: string | null };
+  /** TorkeOS signer printed on the contract (admin signature). */
+  provider?: { name: string; position: string; image: string } | null;
+  /** The owner's signature, once signed in the app. */
+  ownerSignature?: { image: string; name: string; signedAt: string } | null;
 };
 
 const signal = rgb(0.937, 0.247, 0.149);
@@ -21,7 +25,7 @@ const muted = rgb(0.4, 0.4, 0.4);
 const margin = 56;
 
 /** A4 contract with the TorkeOS mark; Helvetica (WinAnsi) covers Spanish accents and ñ. */
-export async function buildContractPdf({ contract, garage, owner, branches = [] }: ContractPdfInput) {
+export async function buildContractPdf({ contract, garage, owner, branches = [], provider, ownerSignature }: ContractPdfInput) {
   const pdf = await PDFDocument.create();
   pdf.setTitle(`${contractTitle(contract)} ${contractCode(contract.number)} - ${garage.name}`);
   pdf.setAuthor("TorkeOS");
@@ -76,16 +80,25 @@ export async function buildContractPdf({ contract, garage, owner, branches = [] 
     paragraph(body, { gap: 8 });
   });
 
-  // Signatures.
-  ensureSpace(110);
-  y -= 50;
+  // Signatures: image above the line, then name and position (TorkeOS) or name and garage (owner).
+  ensureSpace(150);
+  y -= 80;
   const columnWidth = (textWidth - 40) / 2;
-  [["TorkeOS", "Proveedor"], [owner.fullName, garage.name]].forEach(([name, role], index) => {
+  const columns = [
+    { name: provider?.name ?? "TorkeOS", lines: [provider?.position ? `${provider.position} · TorkeOS` : "Proveedor · TorkeOS"], image: provider?.image },
+    { name: ownerSignature?.name ?? owner.fullName, lines: [garage.name, ownerSignature ? `Firmado el ${formatDateTime(ownerSignature.signedAt)}` : "Pendiente de firma"], image: ownerSignature?.image },
+  ];
+  for (const [index, column] of columns.entries()) {
     const x = margin + index * (columnWidth + 40);
+    if (column.image) {
+      const png = await pdf.embedPng(column.image);
+      const scale = Math.min(columnWidth / png.width, 60 / png.height);
+      page.drawImage(png, { x, y: y + 4, width: png.width * scale, height: png.height * scale });
+    }
     page.drawLine({ start: { x, y }, end: { x: x + columnWidth, y }, thickness: 0.8, color: muted });
-    page.drawText(name, { x, y: y - 14, size: 10, font: bold, color: ink });
-    page.drawText(role, { x, y: y - 27, size: 9, font: regular, color: muted });
-  });
+    page.drawText(column.name, { x, y: y - 14, size: 10, font: bold, color: ink });
+    column.lines.forEach((line, lineIndex) => page.drawText(line, { x, y: y - 27 - lineIndex * 12, size: 9, font: regular, color: muted }));
+  }
 
   pdf.getPages().forEach((item, index, pages) => {
     const footer = `TorkeOS · ${code} · Página ${index + 1} de ${pages.length}`;
@@ -147,4 +160,8 @@ function wrap(text: string, font: PDFFont, size: number, maxWidth: number) {
   }
   if (line) lines.push(line);
   return lines;
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("es-VE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Caracas" }).format(new Date(value)).replace(/[\u202f\u00a0]/g, " "); // WinAnsi has no narrow spaces
 }

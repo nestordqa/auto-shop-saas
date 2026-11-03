@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { buildContractPdf } from "@/lib/contract-pdf";
-import { contractCode, type Contract } from "@/lib/contracts";
+import { CONTRACT_COLUMNS, contractCode, type Contract } from "@/lib/contracts";
+import { getDefaultSignature } from "@/lib/signatures";
 import { toUrlSlug } from "@/lib/slugs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "Configura SUPABASE_SECRET_KEY." }, { status: 503 });
 
-  const { data: contract } = await admin.from("contracts").select("id, number, garage_id, owner_id, kind, billing_cycle, plan, commission_percent, start_date, end_date, status, notes, follow_up, follow_up_at, created_at").eq("id", contractId).maybeSingle<Contract>();
+  const { data: contract } = await admin.from("contracts").select(`${CONTRACT_COLUMNS}, provider_signer_name, provider_signer_position, provider_signature, owner_signature`).eq("id", contractId).maybeSingle<Contract & { provider_signer_name: string | null; provider_signer_position: string | null; provider_signature: string | null; owner_signature: string | null }>();
   if (!contract || (user.app_metadata.role !== "admin" && contract.owner_id !== user.id)) return NextResponse.json({ error: "Contrato no encontrado." }, { status: 404 });
 
   const [{ data: garage }, { data: profile }, { data: ownerAuth }, { data: branches }] = await Promise.all([
@@ -25,8 +26,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   ]);
   if (!garage || !profile) return NextResponse.json({ error: "Faltan datos del taller." }, { status: 500 });
 
+  // Contracts issued before signatures existed show the current default one.
+  const fallback = contract.provider_signature ? null : await getDefaultSignature(admin);
   const bytes = await buildContractPdf({
     contract,
+    provider: contract.provider_signature
+      ? { name: contract.provider_signer_name ?? "TorkeOS", position: contract.provider_signer_position ?? "", image: contract.provider_signature }
+      : fallback ? { name: fallback.fullName, position: fallback.position, image: fallback.image } : null,
+    ownerSignature: contract.owner_signature && contract.signed_at ? { image: contract.owner_signature, name: contract.owner_signed_name ?? profile.full_name, signedAt: contract.signed_at } : null,
     garage,
     branches: branches ?? [],
     owner: { fullName: profile.full_name, documentId: profile.document_id, phone: profile.phone, email: ownerAuth.user?.email ?? null },

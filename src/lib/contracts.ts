@@ -25,7 +25,13 @@ export type Contract = {
   follow_up: FollowUp | null;
   follow_up_at: string | null;
   created_at: string;
+  /** When the owner signed it (null = pending signature). */
+  signed_at?: string | null;
+  owner_signed_name?: string | null;
 };
+
+/** Columns of `Contract` (signature images are loaded only where they are drawn). */
+export const CONTRACT_COLUMNS = "id, number, garage_id, owner_id, kind, billing_cycle, plan, commission_percent, start_date, end_date, status, notes, follow_up, follow_up_at, created_at, signed_at, owner_signed_name";
 
 export type FollowUp = "contacted" | "interested" | "declined";
 

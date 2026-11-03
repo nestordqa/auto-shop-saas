@@ -4,7 +4,7 @@ import Link from "next/link";
 import { PlatformPaymentPanel } from "@/components/owner/platform-payment-panel";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { getPaymentMethods } from "@/lib/payments-data";
-import { LOCK_AFTER_DAYS } from "@/lib/contracts";
+import { contractCode, contractTitle, formatDate, LOCK_AFTER_DAYS } from "@/lib/contracts";
 import { duePeriodViews } from "@/lib/billing-view";
 import { getGarageBillingStatus } from "@/lib/billing-status";
 import { requireOwnerGarage } from "@/lib/auth/require-owner-garage";
@@ -38,6 +38,8 @@ export default async function OwnerBillingPage({ searchParams }: { searchParams:
   const currentPage = Math.min(Math.max(Number.parseInt(page, 10) || 1, 1), totalPages);
   const paginatedBudgets = (budgets ?? []).slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const monthOptions = getMonthOptions(garage.created_at, month);
+  const { data: contractRows } = await dataClient.from("contracts").select("id, number, kind, start_date, end_date, status, signed_at").eq("garage_id", garage.id).neq("status", "cancelled").order("created_at", { ascending: false });
+  const contracts = contractRows ?? [];
   const [billingStatus, platformMethods] = await Promise.all([getGarageBillingStatus(garage.id), getPaymentMethods(dataClient, null, { enabledOnly: true })]);
   const extraBranches = branches.filter((branch) => branch.is_active && !branch.is_main).length;
   // Plan in force (paid contract) and this month's usage against it.
@@ -58,6 +60,18 @@ export default async function OwnerBillingPage({ searchParams }: { searchParams:
           </div>}
     </section>
     <section className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4"><Metric label="Período" value={formatBillingMonth(month)} icon={CalendarDays} /><Metric label="Aceptados" value={String(totals.acceptedBudgets)} icon={FileCheck2} /><Metric label="Base aceptada" value={formatMoney(totals.acceptedTotal)} icon={CircleDollarSign} /><Metric label={`Comisión ${commissionPercent}%`} value={formatMoney(totals.commission)} icon={BadgePercent} /></section>
+    {contracts.length > 0 && <section className="mt-6 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm">
+      <h2 className="border-b border-stone-200 p-4 font-bold">Mis contratos</h2>
+      <ul className="divide-y divide-stone-100">{contracts.map((contract) => (
+        <li key={contract.id} className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
+          <span><strong>{contractCode(contract.number)}</strong> · {contractTitle(contract)}<span className="block text-xs text-stone-500">Desde el {formatDate(contract.start_date)}{contract.end_date ? ` hasta el ${formatDate(contract.end_date)}` : ""}</span></span>
+          <span className="flex items-center gap-2">
+            <span className={`rounded-sm px-2 py-0.5 text-xs font-bold ${contract.signed_at ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>{contract.signed_at ? "Firmado" : "Pendiente de firma"}</span>
+            <a href={`/dashboard/owner/contracts/${contract.id}`} className="rounded-md border border-stone-300 px-3 py-1.5 font-bold">{contract.signed_at || contract.status === "cancelled" ? "Ver" : "Firmar"}</a>
+          </span>
+        </li>
+      ))}</ul>
+    </section>}
     <section className="mt-6">
       <h2 className="font-display text-xl font-bold">Pagos a TorkeOS</h2>
       <p className="mb-3 mt-1 text-sm text-stone-600">Cada período se paga a su cierre. Reporta tu pago con el comprobante y te avisaremos cuando lo verifiquemos. Tras {LOCK_AFTER_DAYS} días de mora se suspende el acceso de tu equipo.</p>

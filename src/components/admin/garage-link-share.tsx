@@ -16,6 +16,8 @@ type GarageLinkShareProps = {
   variant?: "compact" | "full";
   /** New owner's login, included in the WhatsApp message right after creating the garage. */
   credentials?: { email: string; password: string };
+  /** Contract issued with the garage: its link goes in the message so the owner signs it. */
+  contract?: { id: string; trialEnds: string | null };
 };
 
 const noopSubscribe = () => () => {};
@@ -24,7 +26,7 @@ function useOrigin() {
   return useSyncExternalStore(noopSubscribe, () => window.location.origin, () => process.env.NEXT_PUBLIC_SITE_URL ?? "");
 }
 
-export function GarageLinkShare({ name, slug, ownerPhone, variant = "compact", credentials }: GarageLinkShareProps) {
+export function GarageLinkShare({ name, slug, ownerPhone, variant = "compact", credentials, contract }: GarageLinkShareProps) {
   const origin = useOrigin();
   const [copied, setCopied] = useState(false);
   const url = `${origin}/${slug}`;
@@ -33,7 +35,8 @@ export function GarageLinkShare({ name, slug, ownerPhone, variant = "compact", c
   const access = credentials
     ? credentialsText({ origin, ...credentials }, credentialsTemplate)
     : `Entra a tu panel en ${origin}/login con el correo y la contraseña temporal que te dimos. Puedes cambiarla en Configuración › Contraseña.`;
-  const message = renderTemplate(template, { taller: name, enlace: url, acceso: access });
+  const contractText = contract ? `📄 *Tu contrato* (${contract.trialEnds ? `mes de prueba por $0, vence el ${contract.trialEnds}` : "plan de pago"}): léelo y fírmalo aquí ${origin}/dashboard/owner/contracts/${contract.id}` : "";
+  const message = renderTemplate(template, { taller: name, enlace: url, acceso: access, contrato: contractText });
   const phone = ownerPhone ? normalizeWhatsAppPhone(ownerPhone) : "";
   const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 

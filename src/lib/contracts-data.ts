@@ -3,12 +3,12 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { ExtraBranch } from "@/lib/billing-branches";
-import type { AcceptedBudget, Contract, ContractPayment } from "@/lib/contracts";
+import { CONTRACT_COLUMNS, type AcceptedBudget, type Contract, type ContractPayment } from "@/lib/contracts";
 import type { GarageOrderDate } from "@/lib/plans";
 
 /** Contracts plus what `contractPeriods` needs: payments, accepted budgets, extra (billable) branches and orders (vehicles per period). */
 export async function loadContractData(supabase: SupabaseClient, filter?: { contractId?: string; garageId?: string }) {
-  let contractsQuery = supabase.from("contracts").select("id, number, garage_id, owner_id, kind, billing_cycle, plan, commission_percent, start_date, end_date, status, notes, follow_up, follow_up_at, created_at").order("created_at", { ascending: false });
+  let contractsQuery = supabase.from("contracts").select(CONTRACT_COLUMNS).order("created_at", { ascending: false });
   if (filter?.contractId) contractsQuery = contractsQuery.eq("id", filter.contractId);
   if (filter?.garageId) contractsQuery = contractsQuery.eq("garage_id", filter.garageId);
   const { data: contracts, error } = await contractsQuery;

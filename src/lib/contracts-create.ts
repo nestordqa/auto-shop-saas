@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { addDays, TRIAL_DAYS, type BillingCycle } from "@/lib/contracts";
 import { PLANS, type PlanKey } from "@/lib/plans";
+import { getDefaultSignature } from "@/lib/signatures";
 
 export type NewContract =
   | { kind: "trial"; garageId: string; startDate: string; notes?: string; createdBy: string }
@@ -26,6 +27,8 @@ export async function createContract(admin: SupabaseClient, input: NewContract):
   }
 
   const plan = input.kind === "paid" ? PLANS[input.plan] : null;
+  // The default TorkeOS signature is copied onto the contract, so later changes do not alter issued ones.
+  const signer = await getDefaultSignature(admin);
   const { data, error } = await admin.from("contracts").insert({
     garage_id: garage.id,
     owner_id: garage.owner_id,
@@ -33,6 +36,7 @@ export async function createContract(admin: SupabaseClient, input: NewContract):
     start_date: input.startDate,
     notes: input.notes || null,
     created_by: input.createdBy,
+    ...(signer && { provider_signer_name: signer.fullName, provider_signer_position: signer.position, provider_signature: signer.image }),
     ...(!plan
       ? { end_date: addDays(input.startDate, TRIAL_DAYS - 1), commission_percent: 0 }
       // Only Pistón (commission) may settle weekly or biweekly; subscriptions are monthly.

@@ -100,3 +100,11 @@ export async function sendBillingReminders(admin: SupabaseClient, today = todayD
   }
   return sent;
 }
+
+/** Owner signed a contract in the app: admins are told. */
+export function notifyContractSigned(garageId: string, contractId: string, code: string) {
+  schedule(async (admin) => {
+    const garage = await garageOwner(admin, garageId);
+    await sendPush(admin, await adminIds(admin), { title: "Contrato firmado", body: `${garage?.name ?? "Un taller"} firmó el contrato ${code}.`, url: `/dashboard/admin/contracts/${contractId}`, tag: `contract-signed-${contractId}` });
+  });
+}
