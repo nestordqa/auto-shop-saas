@@ -257,7 +257,8 @@ export default async function OwnerOrderDetailPage({
           El presupuesto fue rechazado.
         </p>
       )}
-      {canPayOrder(status, budget?.approved) && (
+      {/* A payment reported before this rule (or before a reopening) stays visible so it can be resolved. */}
+      {(canPayOrder(status, budget?.approved) || payment) && (
         <OrderPaymentPanel orderId={order.id} payment={payment} canResolve={staffRole === "garage_owner"} />
       )}
       {(status === "en_reparacion" || status === "en_prueba" || status === "listo_para_entregar") && (

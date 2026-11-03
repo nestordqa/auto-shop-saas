@@ -23,10 +23,11 @@ export function PaymentMethodsEditor({ methods: initial, endpoint = "/api/owner/
   const patchAccount = (index: number, accountIndex: number, change: Partial<BankAccount>) =>
     patch(index, { accounts: methods[index].accounts.map((account, position) => position === accountIndex ? { ...account, ...change } : account) });
 
+  // An emptied discount field keeps its box checked (0 while typing) and is saved as "no discount".
   async function save() {
     setPending(true);
     setNotice({});
-    const response = await fetch(endpoint, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ methods }) });
+    const response = await fetch(endpoint, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ methods: methods.map((method) => ({ ...method, discountPercent: method.discountPercent || null })) }) });
     const result = await response.json() as { error?: string };
     setPending(false);
     if (!response.ok) return setNotice({ error: result.error ?? "No se pudieron guardar los métodos de pago." });
@@ -43,7 +44,7 @@ export function PaymentMethodsEditor({ methods: initial, endpoint = "/api/owner/
             {method.enabled && (
               <label className="flex items-center gap-2 text-sm font-semibold">
                 <input type="checkbox" checked={method.discountPercent !== null} onChange={(event) => patch(index, { discountPercent: event.target.checked ? 5 : null })} className="size-4 accent-[#ef3f26]" /> Descuento
-                {method.discountPercent !== null && <span className="flex items-center gap-1"><input type="number" min={0.5} max={99} step={0.5} value={method.discountPercent} onChange={(event) => patch(index, { discountPercent: Number(event.target.value) || null })} className="min-h-9 w-20 rounded-md border border-stone-300 px-2" />%</span>}
+                {method.discountPercent !== null && <span className="flex items-center gap-1"><input type="number" min={0.5} max={99} step={0.5} value={method.discountPercent || ""} onChange={(event) => patch(index, { discountPercent: Number(event.target.value) || 0 })} className="min-h-9 w-20 rounded-md border border-stone-300 px-2" />%</span>}
               </label>
             )}
           </div>

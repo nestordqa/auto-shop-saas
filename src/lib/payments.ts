@@ -77,8 +77,8 @@ export type OrderPayment = {
 
 export const PAYMENT_COLUMNS = "id, order_id, status, method_kind, discount_percent, base_amount, amount, reference, proof_path, note, created_at, resolved_at";
 
-/** Payment opens once the client approved the budget and the car is ready to be repaired (or later). */
-const PAYABLE_STATUSES: OrderStatus[] = ["en_reparacion", "en_prueba", "listo_para_entregar", "entregado"];
+/** Payment opens once the client approved the budget and the car is ready for pickup (or delivered). */
+const PAYABLE_STATUSES: OrderStatus[] = ["listo_para_entregar", "entregado"];
 export function canPayOrder(status: OrderStatus, budgetApproved: boolean | null | undefined) {
   return budgetApproved === true && PAYABLE_STATUSES.includes(status);
 }
