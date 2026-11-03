@@ -3,6 +3,7 @@
 import { Check, Copy, ExternalLink, MessageCircle } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 
+import { credentialLines } from "@/lib/credentials-message";
 import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
 
 type GarageLinkShareProps = {
@@ -11,6 +12,8 @@ type GarageLinkShareProps = {
   ownerPhone: string | null;
   /** `compact` = icon buttons for table rows; `full` = card shown right after creating the garage. */
   variant?: "compact" | "full";
+  /** New owner's login, included in the WhatsApp message right after creating the garage. */
+  credentials?: { email: string; password: string };
 };
 
 const noopSubscribe = () => () => {};
@@ -19,7 +22,7 @@ function useOrigin() {
   return useSyncExternalStore(noopSubscribe, () => window.location.origin, () => process.env.NEXT_PUBLIC_SITE_URL ?? "");
 }
 
-export function GarageLinkShare({ name, slug, ownerPhone, variant = "compact" }: GarageLinkShareProps) {
+export function GarageLinkShare({ name, slug, ownerPhone, variant = "compact", credentials }: GarageLinkShareProps) {
   const origin = useOrigin();
   const [copied, setCopied] = useState(false);
   const url = `${origin}/${slug}`;
@@ -28,7 +31,7 @@ export function GarageLinkShare({ name, slug, ownerPhone, variant = "compact" }:
     "",
     `Comparte este enlace con tus clientes para que reserven sus citas: ${url}`,
     "",
-    `Entra a tu panel en ${origin}/login con el correo y la contraseña temporal que te dimos.`,
+    ...(credentials ? credentialLines({ origin, ...credentials }) : [`Entra a tu panel en ${origin}/login con el correo y la contraseña temporal que te dimos. Puedes cambiarla en Configuración › Contraseña.`]),
   ].join("\n");
   const phone = ownerPhone ? normalizeWhatsAppPhone(ownerPhone) : "";
   const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { ClientVehicleActions } from "@/components/client/client-vehicle-actions";
 import { VehicleHistoryPanel } from "@/components/history/vehicle-history-panel";
 import { IntakeSummary } from "@/components/intake/intake-summary";
 import { requireRole } from "@/lib/auth/require-role";
@@ -19,7 +20,7 @@ export default async function ClientVehiclePage({ params }: { params: Promise<{ 
   if (!z.uuid().safeParse(vehicleId).success) notFound();
   const user = await requireRole(["client"]);
   const dataClient = createAdminClient() ?? await createClient();
-  const { data: vehicle } = await dataClient.from("vehicles").select("id, brand, model, year, plate").eq("id", vehicleId).eq("user_id", user.id).maybeSingle();
+  const { data: vehicle } = await dataClient.from("vehicles").select("id, brand, model, year, color, plate").eq("id", vehicleId).eq("user_id", user.id).maybeSingle();
   if (!vehicle) notFound();
 
   const history = await getVehicleHistory(dataClient, vehicle.id, { client: true });
@@ -35,6 +36,7 @@ export default async function ClientVehiclePage({ params }: { params: Promise<{ 
         <h1 className="mt-2 font-display text-3xl font-bold sm:text-4xl">{vehicleLabel}</h1>
         <p className="mt-1 text-sm text-stone-600">Todos los servicios, diagnósticos y formatos de ingreso de tu vehículo en los talleres TorkeOS.</p>
       </header>
+      <ClientVehicleActions vehicle={{ id: vehicle.id, year: vehicle.year, color: vehicle.color, plate: vehicle.plate }} />
       <VehicleHistoryPanel history={history} currentMileage={latestMileage} showHints={false} title="Historial de servicios" />
       {history.visits.map((visit) => {
         const intake = intakes.get(visit.orderId);

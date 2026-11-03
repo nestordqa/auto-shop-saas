@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { COMPONENT_KEYS, INTERVENTION_TYPES } from "@/lib/vehicle-systems";
 
 const createDiagnosticSchema = z.object({
-  description: z.string().trim().min(3).max(240),
+  description: z.string().trim().min(3).max(1000),
   component: z.enum(COMPONENT_KEYS).nullish(),
   interventionType: z.enum(INTERVENTION_TYPES).nullish(),
 });

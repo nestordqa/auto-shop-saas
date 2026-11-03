@@ -179,7 +179,8 @@ function clientStatusMessage(order: OrderContext, status: OrderStatus): Message 
     listo_para_entregar: { title: "Tu vehículo está listo", body: `Ya puedes retirar tu ${order.vehicleLabel} en ${order.garageName}.` },
   };
   const message = copy[status];
-  return message ? { userIds: [order.clientId], payload: { ...message, url: CLIENT_URL, tag: `status-${order.id}` } } : null;
+  // One tag per status: a shared tag would let "Diagnóstico terminado" silently replace "Tu vehículo ingresó".
+  return message ? { userIds: [order.clientId], payload: { ...message, url: CLIENT_URL, tag: `status-${order.id}-${status}` } } : null;
 }
 
 /** Call after a successful status change, with the status the order had before it. */

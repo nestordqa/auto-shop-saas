@@ -23,7 +23,7 @@ export default async function MechanicOrderPage({ params }: { params: Promise<{ 
   if (!order) notFound();
   const [{ data: vehicle }, { data: diagnosticRows }, intake, history] = await Promise.all([
     dataClient.from("vehicles").select("user_id, brand, model, year, plate").eq("id", order.vehicle_id).maybeSingle(),
-    dataClient.from("diagnostics").select("id, description, is_completed, component, intervention_type").eq("order_id", order.id).order("created_at"),
+    dataClient.from("diagnostics").select("id, description, is_completed, component, intervention_type, part_brand").eq("order_id", order.id).order("created_at"),
     getOrderIntake(dataClient, order.id),
     getVehicleHistory(dataClient, order.vehicle_id, { garageId: mechanic.garage_id }, { excludeOrderId: order.id }),
   ]);
@@ -36,6 +36,7 @@ export default async function MechanicOrderPage({ params }: { params: Promise<{ 
     isCompleted: item.is_completed,
     component: item.component,
     interventionType: item.intervention_type,
+    partBrand: item.part_brand,
   }));
   const vehicleLabel = vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.year} · ${vehicle.plate}` : "Vehículo";
   const reference = order.id.slice(0, 8).toUpperCase();

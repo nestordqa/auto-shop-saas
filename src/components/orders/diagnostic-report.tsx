@@ -25,13 +25,13 @@ export function DiagnosticReport({ diagnostics, budget, subtitle }: { diagnostic
         {diagnostics.map((item, index) => (
           <div key={item.id} className="flex items-start justify-between gap-4 p-4 sm:px-5">
             <div className="min-w-0">
-              <p className="flex items-start gap-2 font-semibold">
+              <p className="flex items-start gap-2 whitespace-pre-line wrap-break-word font-semibold">
                 <span className="mt-0.5 text-xs font-bold text-stone-400">{String(index + 1).padStart(2, "0")}</span>
                 {item.description}
               </p>
               <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-stone-500">
                 {item.component && <span className="rounded bg-stone-900 px-1.5 py-0.5 font-bold text-white">{componentLabel(item.component)} · {interventionLabel(item.interventionType)}</span>}
-                {budget && item.partBrand && <span className="rounded bg-stone-100 px-1.5 py-0.5 font-semibold text-stone-700">Marca: {item.partBrand}</span>}
+                {item.partBrand && <span className="rounded bg-stone-100 px-1.5 py-0.5 font-semibold text-stone-700">Marca: {item.partBrand}</span>}
                 <span className="inline-flex items-center gap-1">{item.isCompleted ? <CheckCircle2 size={13} className="text-emerald-600" /> : <Circle size={13} />}{item.isCompleted ? "Completado" : "Pendiente"}</span>
               </p>
             </div>

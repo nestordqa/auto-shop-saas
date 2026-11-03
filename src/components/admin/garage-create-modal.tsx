@@ -21,7 +21,7 @@ export function GarageCreateModal({ owners, prospects = [] }: { owners: OwnerOpt
   const [ownerMode, setOwnerMode] = useState<"existing" | "new">(owners.length ? "existing" : "new");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
-  const [created, setCreated] = useState<{ name: string; slug: string; ownerPhone: string | null } | null>(null);
+  const [created, setCreated] = useState<{ name: string; slug: string; ownerPhone: string | null; credentials?: { email: string; password: string } } | null>(null);
   const [prospect, setProspect] = useState<ProspectOption>();
 
   function selectProspect(id: string) {
@@ -56,7 +56,7 @@ export function GarageCreateModal({ owners, prospects = [] }: { owners: OwnerOpt
     }
     form.reset();
     setProspect(undefined);
-    setCreated(result.garage);
+    setCreated({ ...result.garage, credentials: ownerMode === "new" ? { email: String(values.ownerEmail), password: String(values.temporaryPassword) } : undefined });
     router.refresh();
   }
 
@@ -70,9 +70,9 @@ export function GarageCreateModal({ owners, prospects = [] }: { owners: OwnerOpt
             <div className="grid gap-5 p-4 sm:p-6">
               <div className="flex items-start gap-3 rounded-md bg-emerald-50 p-4 text-emerald-900">
                 <CheckCircle2 className="mt-0.5 shrink-0" size={22} />
-                <p><strong>{created.name}</strong> ya está activo. Envíale al owner su enlace de reservas para que lo comparta con sus clientes.</p>
+                <p><strong>{created.name}</strong> ya está activo. Envíale al owner por WhatsApp su enlace de reservas{created.credentials ? ", su correo y su contraseña temporal" : ""}.</p>
               </div>
-              <GarageLinkShare name={created.name} slug={created.slug} ownerPhone={created.ownerPhone} variant="full" />
+              <GarageLinkShare name={created.name} slug={created.slug} ownerPhone={created.ownerPhone} variant="full" credentials={created.credentials} />
               <button type="button" onClick={close} className="min-h-12 rounded-md border border-stone-300 px-5 font-bold">Listo</button>
             </div>
           ) : (

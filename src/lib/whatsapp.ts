@@ -9,7 +9,7 @@ type WhatsAppStatusMessage = {
   orderReference: string;
   status: OrderStatus;
   budget?: {
-    diagnostics: { description: string; price: number }[];
+    diagnostics: { description: string; detail?: string; price: number }[];
     includesParts: boolean;
     totalAmount: number;
   };
@@ -56,7 +56,7 @@ export function buildWhatsAppStatusMessage({
     lines.push(
       "",
       "Detalle del presupuesto:",
-      ...budget.diagnostics.map((item, index) => `${index + 1}. ${item.description}: ${currency.format(item.price)}`),
+      ...budget.diagnostics.map((item, index) => `${index + 1}. ${item.description}${item.detail ? ` (${item.detail})` : ""}: ${currency.format(item.price)}`),
       `Repuestos incluidos: ${budget.includesParts ? "Sí" : "No"}`,
       `Total: ${currency.format(budget.totalAmount)}`,
     );

@@ -137,3 +137,8 @@ export function componentLabel(key: string | null | undefined) {
 export function interventionLabel(type: string | null | undefined) {
   return type && type in INTERVENTION_LABELS ? INTERVENTION_LABELS[type as InterventionType] : null;
 }
+
+/** "Frenos · Reemplazo · Marca Bosch": the extra context of a diagnosis line, for clients and messages. */
+export function diagnosticDetail({ component, interventionType, partBrand }: { component?: string | null; interventionType?: string | null; partBrand?: string | null }) {
+  return [component && componentLabel(component), component && interventionLabel(interventionType), partBrand && `Marca ${partBrand}`].filter(Boolean).join(" · ");
+}

@@ -48,6 +48,8 @@ export function ClientPaymentPanel({ orderId, total, methods, payment }: { order
 
   async function payOnline(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Read the form before any await: React clears event.currentTarget once the handler yields.
+    const reference = String(new FormData(event.currentTarget).get("reference") ?? "");
     if (!method || !file) return setError("Elige el método y adjunta el comprobante.");
     if (!(PROOF_TYPES as readonly string[]).includes(file.type) || file.size > MAX_PROOF_BYTES) return setError("El comprobante debe ser una imagen o PDF de hasta 8 MB.");
     setPending("online");
@@ -58,7 +60,6 @@ export function ClientPaymentPanel({ orderId, total, methods, payment }: { order
       if (!urlResponse.ok || !upload.key || !upload.uploadUrl) throw new Error(upload.error ?? "No se pudo subir el comprobante.");
       const put = await fetch(upload.uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
       if (!put.ok) throw new Error("No se pudo subir el comprobante.");
-      const reference = String(new FormData(event.currentTarget).get("reference") ?? "");
       const response = await fetch(`/api/orders/${orderId}/payment`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "online", methodKind: method.kind, reference, proofKey: upload.key }) });
       const result = await response.json() as { error?: string };
       if (!response.ok) throw new Error(result.error ?? "No se pudo registrar el pago.");

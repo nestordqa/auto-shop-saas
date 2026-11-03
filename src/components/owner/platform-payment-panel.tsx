@@ -38,6 +38,8 @@ export function PlatformPaymentPanel({ periods, methods, lockAfterDays }: { peri
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Read the form before any await: React clears event.currentTarget once the handler yields.
+    const reference = String(new FormData(event.currentTarget).get("reference") ?? "");
     if (!paying || !method || !file) return setError("Elige el medio de pago y adjunta el comprobante.");
     if (!(PROOF_TYPES as readonly string[]).includes(file.type) || file.size > MAX_PROOF_BYTES) return setError("El comprobante debe ser una imagen o PDF de hasta 8 MB.");
     setPending(true);
@@ -48,7 +50,6 @@ export function PlatformPaymentPanel({ periods, methods, lockAfterDays }: { peri
       if (!urlResponse.ok || !upload.key || !upload.uploadUrl) throw new Error(upload.error ?? "No se pudo subir el comprobante.");
       const put = await fetch(upload.uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
       if (!put.ok) throw new Error("No se pudo subir el comprobante.");
-      const reference = String(new FormData(event.currentTarget).get("reference") ?? "");
       const response = await fetch("/api/owner/contract-payments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contractId: paying.contractId, periodStart: paying.start, methodKind: method.kind, reference, proofKey: upload.key }) });
       const result = await response.json() as { error?: string };
       if (!response.ok) throw new Error(result.error ?? "No se pudo registrar el pago.");

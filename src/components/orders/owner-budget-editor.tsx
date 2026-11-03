@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
-import { componentLabel } from "@/lib/vehicle-systems";
+import { componentLabel, diagnosticDetail } from "@/lib/vehicle-systems";
 import { buildWhatsAppStatusMessage, buildWhatsAppStatusUrl } from "@/lib/whatsapp";
 import { ORDER_STATUS_LABELS, type Diagnostic } from "@/types/domain";
 
@@ -74,6 +74,7 @@ export function OwnerBudgetEditor({
     budget: {
       diagnostics: (values.diagnostics ?? []).map((diagnostic) => ({
         description: diagnostic.description ?? "Hallazgo",
+        detail: diagnosticDetail({ component: diagnostic.component, interventionType: initialDiagnostics.find((item) => item.id === diagnostic.id)?.interventionType, partBrand: diagnostic.partBrand }),
         price: Number(diagnostic.price) || 0,
       })),
       includesParts: Boolean(values.includesParts),
@@ -115,7 +116,7 @@ export function OwnerBudgetEditor({
             <div key={field.id} className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_160px] sm:items-center sm:px-6">
               <div className="min-w-0">
                 <span className="text-xs font-bold text-stone-400">0{index + 1}</span>
-                <p className="mt-1 wrap-break-word text-sm font-semibold leading-5">{field.description}</p>
+                <p className="mt-1 wrap-break-word whitespace-pre-line text-sm font-semibold leading-5">{field.description}</p>
                 {field.component && <span className="mt-1 inline-block rounded bg-stone-900 px-1.5 py-0.5 text-[11px] font-bold text-white">{componentLabel(field.component)}</span>}
                 <input
                   aria-label="Marca del repuesto"

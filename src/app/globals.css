@@ -395,3 +395,27 @@ html:has(.landing) {
     animation: none;
   }
 }
+
+/* ---------- Respuesta táctil global ---------- */
+
+/* Every tap is visible: buttons and button-like links sink slightly while pressed. */
+button:not(:disabled), a[class*="rounded"], summary, [role="button"] {
+  transition: transform 120ms ease, background-color 150ms ease, opacity 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+button:not(:disabled):active, a[class*="rounded"]:active, summary:active, [role="button"]:active {
+  transform: scale(0.97);
+}
+button:disabled {
+  cursor: progress;
+}
+
+/* Top bar while a page loads (see RouteProgress). */
+@keyframes route-progress {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(250%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active, a[class*="rounded"]:active, summary:active, [role="button"]:active { transform: none; }
+}

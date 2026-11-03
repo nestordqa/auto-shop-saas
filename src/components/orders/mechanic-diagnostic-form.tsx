@@ -11,7 +11,7 @@ import { INTERVENTION_LABELS, INTERVENTION_TYPES, VEHICLE_SYSTEMS, componentLabe
 import type { Diagnostic, OrderStatus } from "@/types/domain";
 
 const diagnosticSchema = z.object({
-  description: z.string().trim().min(3, "Describe el hallazgo con al menos 3 caracteres.").max(240),
+  description: z.string().trim().min(3, "Describe el hallazgo con al menos 3 caracteres.").max(1000, "Máximo 1000 caracteres."),
   component: z.string(),
   interventionType: z.enum(INTERVENTION_TYPES),
 });
@@ -121,7 +121,7 @@ export function MechanicDiagnosticForm({ orderId, initialStatus, initialDiagnost
               {diagnostic.isCompleted ? <Check size={21} /> : <Circle size={20} />}
             </button>
             <div className="min-w-0 flex-1 pt-1">
-              <p className={`wrap-break-word text-sm font-semibold leading-5 ${diagnostic.isCompleted ? "text-stone-500 line-through" : "text-stone-900"}`}>{diagnostic.description}</p>
+              <p className={`wrap-break-word whitespace-pre-line text-sm font-semibold leading-5 ${diagnostic.isCompleted ? "text-stone-500 line-through" : "text-stone-900"}`}>{diagnostic.description}</p>
               <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-medium text-stone-500">
                 {diagnostic.component && <span className="rounded bg-stone-900 px-1.5 py-0.5 font-bold text-white">{componentLabel(diagnostic.component)} · {interventionLabel(diagnostic.interventionType)}</span>}
                 Sin precio asignado
@@ -158,7 +158,7 @@ export function MechanicDiagnosticForm({ orderId, initialStatus, initialDiagnost
         <label htmlFor="description" className="text-sm font-bold">Nuevo hallazgo</label>
         <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-start">
           <div className="min-w-0 flex-1">
-            <textarea id="description" rows={3} placeholder="Ej. Fuga de aceite en tapa de válvulas" className="min-h-28 w-full resize-none rounded-md border border-stone-300 bg-white px-4 py-3 text-base outline-none focus:border-[#ef3f26] focus:ring-2 focus:ring-[#ef3f26]/20" {...register("description")} />
+            <textarea id="description" rows={4} maxLength={1000} placeholder="Ej. Fuga de aceite en tapa de válvulas" className="min-h-28 w-full resize-none rounded-md border border-stone-300 bg-white px-4 py-3 text-base outline-none focus:border-[#ef3f26] focus:ring-2 focus:ring-[#ef3f26]/20" {...register("description")} />
             {errors.description && <p className="mt-1 text-sm font-medium text-red-700">{errors.description.message}</p>}
           </div>
           <button disabled={isSubmitting} type="submit" className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#ef3f26] px-5 font-bold text-white hover:bg-[#d9341d] disabled:opacity-60">

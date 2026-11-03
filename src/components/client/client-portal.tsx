@@ -124,7 +124,8 @@ export function OrderCard({ order }: { order: ClientOrder }) {
                   <div key={`${item.description}-${index}`} className="flex justify-between gap-5 px-5 py-4">
                     <div>
                       <span className="text-xs font-bold text-stone-400">{String(index + 1).padStart(2, "0")}</span>
-                      <p className="mt-1 font-semibold">{item.description}</p>
+                      <p className="mt-1 whitespace-pre-line wrap-break-word font-semibold">{item.description}</p>
+                      {item.detail && <p className="mt-1 text-xs font-semibold text-stone-500">{item.detail}</p>}
                     </div>
                     <strong className="shrink-0">{currency.format(item.price)}</strong>
                   </div>
@@ -183,7 +184,7 @@ export function OrderRow({ order }: { order: ClientOrder }) {
             </div>
             <ul className="mb-4 grid gap-1 text-sm text-stone-600">
               {order.budget.diagnostics.map((item, index) => (
-                <li key={`${item.description}-${index}`} className="flex justify-between gap-3"><span>{item.description}</span><span className="shrink-0">{currency.format(item.price)}</span></li>
+                <li key={`${item.description}-${index}`} className="flex justify-between gap-3"><span className="min-w-0"><span className="whitespace-pre-line wrap-break-word">{item.description}</span>{item.detail && <span className="block text-xs text-stone-500">{item.detail}</span>}</span><span className="shrink-0">{currency.format(item.price)}</span></li>
               ))}
             </ul>
             <BudgetDecisionActions orderId={order.orderId} />
