@@ -59,7 +59,7 @@ export async function buildContractPdf({ contract, garage, owner, branches = [] 
   y -= 30;
 
   paragraph(contractTitle(contract).toUpperCase(), { font: bold, size: 16, gap: 4 });
-  paragraph(contract.kind === "trial" ? "Primer mes de cortesía" : contract.plan ? planSummary(contract.plan) : `Cobro ${CYCLE_LABELS[contract.billing_cycle!].toLowerCase()} · comisión del ${Number(contract.commission_percent)}%`, { size: 11, color: signal, gap: 14 });
+  paragraph(contract.kind === "trial" ? `Primer mes de prueba · 0 USD · vence el ${formatDate(contract.end_date!)}` : contract.plan ? planSummary(contract.plan) : `Cobro ${CYCLE_LABELS[contract.billing_cycle!].toLowerCase()} · comisión del ${Number(contract.commission_percent)}%`, { size: 11, color: signal, gap: 14 });
 
   paragraph("PARTES", { font: bold, size: 11, gap: 2 });
   paragraph("Proveedor: TorkeOS, plataforma de gestión para talleres automotrices.");
@@ -103,8 +103,8 @@ function clauses(contract: Contract): [string, string][] {
     return [
       service,
       ["Vigencia", `El período de prueba dura ${TRIAL_DAYS} días calendario, desde el ${start} hasta el ${formatDate(contract.end_date!)}, ambos inclusive.`],
-      ["Cortesía", "Este primer mes se otorga como cortesía, sin costo alguno para el Taller y con acceso a todas las funciones de la plataforma."],
-      ["Continuidad", "Al finalizar la prueba, TorkeOS enviará al Taller un nuevo contrato con el plan y las condiciones de pago. Para seguir usando la plataforma, el Taller deberá aceptarlo; si no lo hace, el acceso podrá suspenderse sin que se pierdan sus datos."],
+      ["Costo", "Este primer mes tiene un costo de 0 USD: se otorga como cortesía, sin cargo alguno para el Taller y con acceso a todas las funciones de la plataforma."],
+      ["Vencimiento y plan", `Al vencer la prueba, el Taller deberá elegir uno de los planes de pago (Bujía, Alternador o Pistón) desde su panel en TorkeOS, que emitirá el contrato correspondiente con vigencia desde ese día. Mientras no elija un plan, la plataforma se lo recordará; si pasan más de ${LOCK_AFTER_DAYS} días sin plan ni pago, el acceso del Taller y su equipo se suspende hasta regularizarse, sin que se pierdan sus datos. Los clientes del Taller nunca pierden acceso.`],
       data,
     ];
   }

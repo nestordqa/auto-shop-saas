@@ -6,7 +6,10 @@ import { phoneSchema } from "@/lib/phone";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { toUrlSlug } from "@/lib/slugs";
-import { MECHANIC_SPECIALTY_LABELS } from "@/lib/mechanics";
+import { addDays, formatDate, todayDate, TRIAL_DAYS } from "@/lib/contracts";
+import { createContract } from "@/lib/contracts-create";
+import { specialtySummary } from "@/lib/mechanics";
+import { validSpecialtyKeys } from "@/lib/specialties-data";
 
 const garageSchema = z.discriminatedUnion("ownerMode", [
   z.object({
@@ -15,8 +18,9 @@ const garageSchema = z.discriminatedUnion("ownerMode", [
     name: z.string().trim().min(2).max(120),
     address: z.string().trim().min(5).max(300),
     mapLocation: z.string().trim().max(500).optional(),
-    specialty: z.string().trim().max(120).optional(),
-    plan: z.enum(PLAN_KEYS).default("bujia"),
+    specialties: z.array(z.string().regex(/^[a-z0-9_]+$/).max(60)).max(40).default(["general"]),
+    /** "trial" = free first month (default); a plan key = paid from today. */
+    start: z.enum(["trial", ...PLAN_KEYS]).default("trial"),
     prospectId: z.union([z.literal(""), z.uuid()]).optional(),
   }),
   z.object({
@@ -29,8 +33,9 @@ const garageSchema = z.discriminatedUnion("ownerMode", [
     name: z.string().trim().min(2).max(120),
     address: z.string().trim().min(5).max(300),
     mapLocation: z.string().trim().max(500).optional(),
-    specialty: z.string().trim().max(120).optional(),
-    plan: z.enum(PLAN_KEYS).default("bujia"),
+    specialties: z.array(z.string().regex(/^[a-z0-9_]+$/).max(60)).max(40).default(["general"]),
+    /** "trial" = free first month (default); a plan key = paid from today. */
+    start: z.enum(["trial", ...PLAN_KEYS]).default("trial"),
     prospectId: z.union([z.literal(""), z.uuid()]).optional(),
   }),
 ]);
@@ -83,6 +88,7 @@ export async function POST(request: Request) {
     if (!owner) return NextResponse.json({ error: "El owner no existe o ya no está disponible." }, { status: 400 });
   }
 
+  const specialties = await validSpecialtyKeys(admin, input.specialties);
   const baseSlug = toUrlSlug(input.name);
   const { data: matchingSlugs } = await admin.from("garages").select("slug").like("slug", `${baseSlug}%`);
   const usedSlugs = new Set((matchingSlugs ?? []).map(({ slug }) => slug));
@@ -94,8 +100,9 @@ export async function POST(request: Request) {
     slug,
     address: input.address,
     map_location: input.mapLocation || null,
-    specialty: input.specialty || MECHANIC_SPECIALTY_LABELS.general,
-    plan: input.plan,
+    specialty: specialtySummary(specialties.keys, specialties.options),
+    specialties: specialties.keys.length ? specialties.keys : ["general"],
+    plan: input.start === "trial" ? null : input.start,
     owner_id: ownerId,
   }).select("id").single();
 
@@ -107,6 +114,13 @@ export async function POST(request: Request) {
   // Created from a prospect: close it as won and link it to the new garage.
   if (input.prospectId && garage) await admin.from("garage_prospects").update({ status: "won", garage_id: garage.id, next_follow_up: null }).eq("id", input.prospectId);
 
+  // Every garage starts with a contract: the free month ($0, ends after TRIAL_DAYS) or the chosen plan from today.
+  const startDate = todayDate();
+  const contract = garage ? await createContract(admin, input.start === "trial"
+    ? { kind: "trial", garageId: garage.id, startDate, createdBy: user.id }
+    : { kind: "paid", garageId: garage.id, startDate, plan: input.start, billingCycle: "monthly", createdBy: user.id }) : null;
+  const contractId = contract && "id" in contract ? contract.id : null;
+
   const { data: ownerProfile } = await admin.from("profiles").select("phone").eq("id", ownerId).maybeSingle();
-  return NextResponse.json({ success: true, garage: { name: input.name, slug, ownerPhone: ownerProfile?.phone ?? null } }, { status: 201 });
+  return NextResponse.json({ success: true, garage: { name: input.name, slug, ownerPhone: ownerProfile?.phone ?? null, contractId, trialEnds: contractId && input.start === "trial" ? formatDate(addDays(startDate, TRIAL_DAYS - 1)) : null } }, { status: 201 });
 }

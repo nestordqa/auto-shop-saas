@@ -6,6 +6,7 @@ import type { OrderStatus } from "@/types/domain";
 export type HistoryItem = {
   description: string;
   component: string | null;
+  componentLabel: string | null;
   interventionType: string | null;
   partBrand: string | null;
   price: number | null;
@@ -62,7 +63,7 @@ export async function getVehicleHistory(
   const garageIds = [...new Set(relevant.map((order) => order.garage_id))];
   const [{ data: intakes }, { data: diagnostics }, { data: budgets }, { data: garages }] = await Promise.all([
     dataClient.from("vehicle_intakes").select("order_id, mileage, reported_issue").in("order_id", orderIds),
-    dataClient.from("diagnostics").select("order_id, description, price, component, intervention_type, part_brand").in("order_id", orderIds).order("created_at"),
+    dataClient.from("diagnostics").select("order_id, description, price, component, component_label, intervention_type, part_brand").in("order_id", orderIds).order("created_at"),
     dataClient.from("budgets").select("order_id, approved").in("order_id", orderIds),
     dataClient.from("garages").select("id, name").in("id", garageIds),
   ]);
@@ -82,6 +83,7 @@ export async function getVehicleHistory(
       items: (diagnostics ?? []).filter((item) => item.order_id === order.id).map((item) => ({
         description: item.description,
         component: item.component,
+        componentLabel: item.component_label,
         interventionType: item.intervention_type,
         partBrand: item.part_brand,
         price: ownGarage && item.price !== null ? Number(item.price) : null,

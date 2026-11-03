@@ -8,8 +8,7 @@ import { TablePagination } from "@/components/ui/table-pagination";
 import { formatAppointmentDateTime } from "@/lib/appointments";
 import { branchScope, requireOwnerGarage } from "@/lib/auth/require-owner-garage";
 import {
-  MECHANIC_SPECIALTY_LABELS,
-  type MechanicSpecialty,
+  specialtyLabel,
 } from "@/lib/mechanics";
 import { compareOrdersForWork, getOpenOrdersByVehicle } from "@/lib/order-status";
 import { getOwnerOrders } from "@/lib/owner-orders";
@@ -88,7 +87,7 @@ export default async function OwnerOrdersPage({
     id: mechanic.id,
     name: optionProfileById.get(mechanic.profile_id) ?? "Mecánico",
     specialty:
-      MECHANIC_SPECIALTY_LABELS[mechanic.specialty as MechanicSpecialty],
+      specialtyLabel(mechanic.specialty),
     branchId: mechanic.branch_id as string,
   }));
   const brandOptions = (brands ?? []).map((brand) => ({

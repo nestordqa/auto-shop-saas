@@ -130,8 +130,9 @@ export const COMPONENTS = new Map(
 
 export const COMPONENT_KEYS = [...COMPONENTS.keys()] as [string, ...string[]];
 
-export function componentLabel(key: string | null | undefined) {
-  return key ? COMPONENTS.get(key)?.label ?? key : null;
+/** `saved` is the label stored with the diagnosis (catalog repairs and "Otro…"); built-in labels are the fallback. */
+export function componentLabel(key: string | null | undefined, saved?: string | null) {
+  return key ? saved || COMPONENTS.get(key)?.label || key : null;
 }
 
 export function interventionLabel(type: string | null | undefined) {
@@ -139,6 +140,6 @@ export function interventionLabel(type: string | null | undefined) {
 }
 
 /** "Frenos · Reemplazo · Marca Bosch": the extra context of a diagnosis line, for clients and messages. */
-export function diagnosticDetail({ component, interventionType, partBrand }: { component?: string | null; interventionType?: string | null; partBrand?: string | null }) {
-  return [component && componentLabel(component), component && interventionLabel(interventionType), partBrand && `Marca ${partBrand}`].filter(Boolean).join(" · ");
+export function diagnosticDetail({ component, componentLabel: saved, interventionType, partBrand }: { component?: string | null; componentLabel?: string | null; interventionType?: string | null; partBrand?: string | null }) {
+  return [component && componentLabel(component, saved), component && interventionLabel(interventionType), partBrand && `Marca ${partBrand}`].filter(Boolean).join(" · ");
 }

@@ -10,6 +10,7 @@ import { MechanicDiagnosticForm } from "@/components/orders/mechanic-diagnostic-
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderProgressAction } from "@/components/owner/order-progress-action";
 import { requireMechanic } from "@/lib/auth/require-mechanic";
+import { getGarageRepairOptions } from "@/lib/repair-catalog";
 import { getOrderIntake } from "@/lib/intake-data";
 import { isStorageConfigured } from "@/lib/storage/intake-photos";
 import { getVehicleHistory } from "@/lib/vehicle-history";
@@ -23,10 +24,11 @@ export default async function MechanicOrderPage({ params }: { params: Promise<{ 
   if (!order) notFound();
   const [{ data: vehicle }, { data: diagnosticRows }, intake, history] = await Promise.all([
     dataClient.from("vehicles").select("user_id, brand, model, year, plate").eq("id", order.vehicle_id).maybeSingle(),
-    dataClient.from("diagnostics").select("id, description, is_completed, component, intervention_type, part_brand").eq("order_id", order.id).order("created_at"),
+    dataClient.from("diagnostics").select("id, description, is_completed, component, component_label, intervention_type, part_brand").eq("order_id", order.id).order("created_at"),
     getOrderIntake(dataClient, order.id),
     getVehicleHistory(dataClient, order.vehicle_id, { garageId: mechanic.garage_id }, { excludeOrderId: order.id }),
   ]);
+  const repairOptions = order.status === "ingresado" ? await getGarageRepairOptions(dataClient, mechanic.garage_id) : [];
   const { data: customer } = vehicle ? await dataClient.from("profiles").select("full_name").eq("id", vehicle.user_id).maybeSingle() : { data: null };
   const status = order.status as OrderStatus;
   const diagnostics: Diagnostic[] = (diagnosticRows ?? []).map((item) => ({
@@ -35,6 +37,7 @@ export default async function MechanicOrderPage({ params }: { params: Promise<{ 
     price: null,
     isCompleted: item.is_completed,
     component: item.component,
+    componentLabel: item.component_label,
     interventionType: item.intervention_type,
     partBrand: item.part_brand,
   }));
@@ -55,7 +58,7 @@ export default async function MechanicOrderPage({ params }: { params: Promise<{ 
       {intake && <IntakeSummary intake={intake} vehicleLabel={vehicleLabel} orderReference={reference} defaultOpen={status === "ingresado"} downloadable={false} />}
       {status !== "por_ingresar" && <VehicleHistoryPanel history={history} currentMileage={intake?.mileage} />}
       <div className="mt-4">
-        {status === "ingresado" && <MechanicDiagnosticForm orderId={order.id} initialStatus={status} initialDiagnostics={diagnostics} />}
+        {status === "ingresado" && <MechanicDiagnosticForm orderId={order.id} initialStatus={status} initialDiagnostics={diagnostics} repairOptions={repairOptions} />}
         {status !== "por_ingresar" && status !== "ingresado" && (
           <div className="mb-4">
             <DiagnosticReport diagnostics={diagnostics} subtitle={status === "diagnosticado" ? "Diagnóstico finalizado. El taller debe cargar el presupuesto." : undefined} />

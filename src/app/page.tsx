@@ -35,13 +35,12 @@ import { LandingEffects } from "@/components/landing/landing-effects";
 import { LandingHeader } from "@/components/landing/landing-header";
 import { EXTRA_BRANCH_FEE } from "@/lib/billing-branches";
 import { TORKEOS_WHATSAPP, torkeosWhatsAppUrl } from "@/lib/contact";
+import { getMessageTemplates } from "@/lib/message-templates-data";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { EXTRA_VEHICLE_FEE, PLAN_KEYS, PLANS, RATE_NOTE } from "@/lib/plans";
 import { serializeJsonLd, siteUrl } from "@/lib/seo";
 import { ORDER_STATUSES, ORDER_STATUS_LABELS } from "@/types/domain";
 
-const WHATSAPP_MESSAGE = "Hola, quiero TorkeOS para mi taller. ¿Me cuentan cómo empezar?";
-// TorkeOS number comes from NEXT_PUBLIC_TORKEOS_WHATSAPP; without it the CTAs open the garage sign-up form.
-const WHATSAPP_URL = torkeosWhatsAppUrl(WHATSAPP_MESSAGE) ?? "/register?tipo=taller";
 const CONTACT_EMAIL = "contacto@torkeos.com";
 
 const fromPrice = PLANS.bujia.kind === "subscription" ? PLANS.bujia.price : 0;
@@ -273,10 +272,10 @@ function SectionTag({ children }: { children: ReactNode }) {
   );
 }
 
-function WhatsAppButton({ className, children = "Hablar por WhatsApp" }: { className?: string; children?: ReactNode }) {
+function WhatsAppButton({ href, className, children = "Hablar por WhatsApp" }: { href: string; className?: string; children?: ReactNode }) {
   return (
     <a
-      href={WHATSAPP_URL}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       className={`group relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-md bg-[#ef3f26] px-5 font-bold text-white transition hover:bg-[#d9341d] hover:shadow-[0_0_40px_rgba(239,63,38,0.55)] ${className ?? ""}`}
@@ -331,14 +330,20 @@ function Timeline({ steps }: { steps: Step[] }) {
   );
 }
 
-export default function HomePage() {
+// The contact message is admin-editable (Mensajes de WhatsApp); the page is rebuilt at most every 5 minutes.
+export const revalidate = 300;
+
+export default async function HomePage() {
+  // TorkeOS number comes from NEXT_PUBLIC_TORKEOS_WHATSAPP; without it the CTAs open the garage sign-up form.
+  const templates = await getMessageTemplates(createAdminClient());
+  const whatsappUrl = torkeosWhatsAppUrl(templates.landing_contact) ?? "/register?tipo=taller";
   const statusLabels = ORDER_STATUSES.map((status) => ORDER_STATUS_LABELS[status]);
 
   return (
     <div className="landing min-h-dvh overflow-x-clip bg-[#171a1f] text-white">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <LandingEffects />
-      <LandingHeader whatsappUrl={WHATSAPP_URL} />
+      <LandingHeader whatsappUrl={whatsappUrl} />
 
       <main>
         {/* Hero */}
@@ -383,7 +388,7 @@ export default function HomePage() {
                 y tus clientes aprueban desde el teléfono.
               </p>
               <div className="landing-fade-up mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap" style={delay(2)}>
-                <WhatsAppButton>Quiero TorkeOS en mi taller</WhatsAppButton>
+                <WhatsAppButton href={whatsappUrl}>Quiero TorkeOS en mi taller</WhatsAppButton>
                 <a
                   href="#talleres"
                   className="inline-flex min-h-12 items-center justify-center rounded-md border border-white/40 bg-black/30 px-5 font-bold text-white backdrop-blur transition hover:border-white hover:bg-white/10"
@@ -525,7 +530,7 @@ export default function HomePage() {
                 />
               </div>
               <div data-reveal="up" style={delay(4)} className="mt-8">
-                <WhatsAppButton>Registrar mi taller</WhatsAppButton>
+                <WhatsAppButton href={whatsappUrl}>Registrar mi taller</WhatsAppButton>
               </div>
             </div>
             <Timeline steps={ownerSteps} />
@@ -645,7 +650,7 @@ export default function HomePage() {
                     ))}
                   </ul>
                   <div className="mt-auto pt-10">
-                    <WhatsAppButton className="w-full">Lo quiero para mi taller</WhatsAppButton>
+                    <WhatsAppButton href={whatsappUrl} className="w-full">Lo quiero para mi taller</WhatsAppButton>
                   </div>
                 </div>
               </article>
@@ -690,7 +695,7 @@ export default function HomePage() {
                 Escríbenos y en minutos te explicamos cómo empezar. Sin compromiso.
               </p>
               <div data-reveal="up" style={delay(3)} className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <WhatsAppButton>Escribir por WhatsApp</WhatsAppButton>
+                <WhatsAppButton href={whatsappUrl}>Escribir por WhatsApp</WhatsAppButton>
               </div>
             </div>
           </div>
@@ -715,7 +720,7 @@ export default function HomePage() {
 
       {/* Floating WhatsApp */}
       <a
-        href={WHATSAPP_URL}
+        href={whatsappUrl}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Escríbenos por WhatsApp"

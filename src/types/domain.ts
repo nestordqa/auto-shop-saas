@@ -34,6 +34,8 @@ export type Diagnostic = {
   price: number | null;
   isCompleted: boolean;
   component?: string | null;
+  /** Label saved with the diagnosis (catalog item or the mechanic's own "Otro…" text). */
+  componentLabel?: string | null;
   interventionType?: string | null;
   partBrand?: string | null;
 };

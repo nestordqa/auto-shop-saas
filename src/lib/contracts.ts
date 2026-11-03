@@ -1,5 +1,6 @@
 /** Contract periods and payment status. Dates are `YYYY-MM-DD` strings handled in UTC. */
 
+import { MESSAGE_TEMPLATES, renderTemplate } from "@/lib/message-templates";
 import { branchFeeForPeriod, type ExtraBranch } from "@/lib/billing-branches";
 import { planCharge, PLANS, plansComparisonLines, planSummary, type GarageOrderDate, type PlanKey } from "@/lib/plans";
 
@@ -165,105 +166,25 @@ export function contractCode(number: number) {
   return `TK-${String(number).padStart(4, "0")}`;
 }
 
-/** Text sent to the owner (WhatsApp or email) announcing a new contract. */
-export function buildContractMessage({ contract, garageName, ownerName, pdfUrl }: { contract: Contract; garageName: string; ownerName: string; pdfUrl: string }) {
+/** Text sent to the owner (WhatsApp or email) announcing a new contract. `template` is the admin-edited body. */
+export function buildContractMessage({ contract, garageName, ownerName, pdfUrl }: { contract: Contract; garageName: string; ownerName: string; pdfUrl: string }, template = MESSAGE_TEMPLATES.contract_new.body) {
   const terms = contract.kind === "trial"
-    ? [`Te damos la bienvenida con un primer mes de prueba sin costo, del ${formatDate(contract.start_date)} al ${formatDate(contract.end_date!)}.`, "Al finalizar te enviaremos el contrato con el plan de pago."]
+    ? [`Te damos la bienvenida con un primer mes de prueba por *$0*, del ${formatDate(contract.start_date)} al ${formatDate(contract.end_date!)}, con todas las funciones.`, "Cuando venza, elige tu plan (Bujía, Alternador o Pistón) desde tu panel en TorkeOS; te lo recordaremos al entrar."]
     : [contract.plan ? `Plan ${PLANS[contract.plan].name}: ${planSummary(contract.plan).split(" · ").slice(1).join(", ")}, vigente desde el ${formatDate(contract.start_date)}.` : `Comisión del ${Number(contract.commission_percent)}% sobre los presupuestos aceptados, vigente desde el ${formatDate(contract.start_date)}.`, `Se cobra ${CYCLE_DESCRIPTIONS[contract.billing_cycle!]}; el pago vence al cierre de cada período y, tras ${LOCK_AFTER_DAYS} días de mora, se suspende el acceso hasta ponerse al día.`];
-  return [
-    `Hola ${ownerName},`,
-    "",
-    `Tienes un nuevo contrato de TorkeOS para ${garageName} (${contractCode(contract.number)}).`,
-    ...terms,
-    "",
-    `Puedes verlo y descargarlo aquí (inicia sesión con tu cuenta): ${pdfUrl}`,
-    "",
-    "Cualquier duda, respóndenos por aquí.",
-  ].join("\n");
+  return renderTemplate(template, { owner: ownerName, taller: garageName, codigo: contractCode(contract.number), condiciones: terms.join("\n"), enlace: pdfUrl });
 }
 
 /** Sent to a prospect: everything we need to create their garage in TorkeOS. */
-export function buildRequirementsMessage(name?: string) {
-  return [
-    `¡Hola${name ? ` ${name}` : ""}! Gracias por tu interés en TorkeOS.`,
-    "",
-    "Para crear tu taller solo necesitamos estos datos:",
-    "",
-    "*Del taller*",
-    "1. Nombre comercial",
-    "2. Especialidad (opcional), por ejemplo: frenos y suspensión",
-    "3. Dirección completa",
-    "4. Ubicación en Google Maps (opcional)",
-    "",
-    "*Del dueño*",
-    "5. Nombre completo",
-    "6. Cédula o RIF",
-    "7. Correo electrónico (será tu usuario para entrar)",
-    "8. Teléfono",
-    "",
-    "*Elige tu plan*",
-    ...plansComparisonLines(),
-    "",
-    "9. Indícanos qué plan prefieres (puedes cambiarlo más adelante).",
-    "",
-    "Con eso es suficiente. Una vez creado tu taller te enviaremos tu acceso y el contrato de tu *primer mes de prueba, sin costo*, con todas las funciones.",
-  ].join("\n");
+export function buildRequirementsMessage(name?: string, template = MESSAGE_TEMPLATES.prospect_requirements.body) {
+  return renderTemplate(template, { contacto: name ?? "", planes: plansComparisonLines().join("\n") });
 }
 
-/** Sent once the contract is signed: the garage is live, its links, and how owner and clients install the app for notifications. */
-export function buildWelcomeMessage({ ownerName, garageName, garageUrl, loginUrl }: { ownerName: string; garageName: string; garageUrl: string; loginUrl: string }) {
-  return [
-    `¡Hola ${ownerName}! Todo listo ✅`,
-    "",
-    `${garageName} ya está activo en TorkeOS.`,
-    "",
-    `*Tu panel:* ${loginUrl}`,
-    "Entra con tu correo y tu contraseña.",
-    "",
-    `*Enlace para tus clientes:* ${garageUrl}`,
-    "Compártelo por WhatsApp, redes o en el taller: desde ahí se registran y agendan sus citas.",
-    "",
-    "*Importante: notificaciones*",
-    "Para recibir avisos (citas nuevas, presupuestos aprobados, vehículos listos), tanto tú como tus clientes deben instalar la app y activar las notificaciones. Es gratis y no ocupa espacio:",
-    "",
-    "*Android (Chrome)*",
-    "1. Abre el enlace en Chrome.",
-    "2. Toca el menú ⋮ (arriba a la derecha).",
-    "3. Elige «Instalar app» o «Agregar a pantalla principal».",
-    "",
-    "*iPhone (Safari)*",
-    "1. Abre el enlace en Safari (no funciona desde otros navegadores).",
-    "2. Toca el botón Compartir (cuadro con flecha hacia arriba).",
-    "3. Elige «Agregar a inicio» y luego «Agregar».",
-    "4. Abre TorkeOS desde el ícono nuevo: en iPhone las notificaciones solo funcionan desde la app instalada.",
-    "",
-    "*Computadora (Chrome o Edge)*",
-    "1. Abre el enlace.",
-    "2. Haz clic en el ícono de instalar en la barra de direcciones (o menú ⋮ → «Instalar TorkeOS»).",
-    "",
-    "🔔 *Muy importante: activa las notificaciones*",
-    "Instalar la app no es suficiente: si no activas las notificaciones, no te llegará ningún aviso.",
-    "1. Abre TorkeOS desde el ícono instalado e inicia sesión.",
-    "2. Abre el menú y toca «Activar notificaciones».",
-    "3. Cuando el teléfono pregunte, elige «Permitir».",
-    "Si el botón dice «Notificaciones activas», ya quedó listo.",
-    "",
-    "Tus clientes deben hacer lo mismo con el enlace de tu taller: instalar la app *y activar las notificaciones*. ¡Bienvenido a TorkeOS!",
-  ].join("\n");
+/** Sent once the contract is signed: the garage is live, its links, and how to install the app for notifications. */
+export function buildWelcomeMessage({ ownerName, garageName, garageUrl, loginUrl }: { ownerName: string; garageName: string; garageUrl: string; loginUrl: string }, template = MESSAGE_TEMPLATES.owner_welcome.body) {
+  return renderTemplate(template, { owner: ownerName, taller: garageName, panel: loginUrl, enlace: garageUrl });
 }
 
 /** Sent to the owner once the trial has ended, to ask whether they want to continue. */
-export function buildTrialFollowUpMessage({ contract, garageName, ownerName }: { contract: Contract; garageName: string; ownerName: string }) {
-  return [
-    `Hola ${ownerName},`,
-    "",
-    `El mes de prueba de ${garageName} en TorkeOS terminó el ${formatDate(contract.end_date!)}. ¡Gracias por acompañarnos!`,
-    "",
-    "Nos gustaría saber qué te pareció: qué te sirvió, qué mejorarías y si quieres seguir usando la plataforma.",
-    "",
-    "Si continúas, te enviamos tu contrato con el plan que prefieras:",
-    ...plansComparisonLines(),
-    "",
-    "Quedamos atentos a tu respuesta.",
-  ].join("\n");
+export function buildTrialFollowUpMessage({ contract, garageName, ownerName }: { contract: Contract; garageName: string; ownerName: string }, template = MESSAGE_TEMPLATES.trial_follow_up.body) {
+  return renderTemplate(template, { owner: ownerName, taller: garageName, fin: formatDate(contract.end_date!), planes: plansComparisonLines().join("\n") });
 }

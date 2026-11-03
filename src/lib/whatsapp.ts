@@ -1,3 +1,4 @@
+import { MESSAGE_TEMPLATES, renderTemplate } from "@/lib/message-templates";
 import { whatsAppDigits } from "@/lib/phone";
 import { ORDER_STATUS_LABELS, type OrderStatus } from "@/types/domain";
 
@@ -33,6 +34,7 @@ export function normalizeWhatsAppPhone(phone: string) {
   return whatsAppDigits(phone);
 }
 
+/** `template` is the admin-edited body of "order_status". */
 export function buildWhatsAppStatusMessage({
   customerName,
   garageName,
@@ -40,34 +42,19 @@ export function buildWhatsAppStatusMessage({
   orderReference,
   status,
   budget,
-}: Omit<WhatsAppStatusMessage, "phone">) {
-  const lines = [
-    `Hola ${customerName},`,
-    "",
-    `Actualización de ${garageName}`,
-    `Vehículo: ${vehicleLabel}`,
-    `Orden: ${orderReference}`,
-    `Estado: ${ORDER_STATUS_LABELS[status]}`,
-    "",
-    statusCopy[status],
-  ];
-
-  if (budget) {
-    lines.push(
-      "",
-      "Detalle del presupuesto:",
-      ...budget.diagnostics.map((item, index) => `${index + 1}. ${item.description}${item.detail ? ` (${item.detail})` : ""}: ${currency.format(item.price)}`),
-      `Repuestos incluidos: ${budget.includesParts ? "Sí" : "No"}`,
-      `Total: ${currency.format(budget.totalAmount)}`,
-    );
-  }
-
-  return lines.join("\n");
+}: Omit<WhatsAppStatusMessage, "phone">, template = MESSAGE_TEMPLATES.order_status.body) {
+  const budgetText = budget ? [
+    "Detalle del presupuesto:",
+    ...budget.diagnostics.map((item, index) => `${index + 1}. ${item.description}${item.detail ? ` (${item.detail})` : ""}: ${currency.format(item.price)}`),
+    `Repuestos incluidos: ${budget.includesParts ? "Sí" : "No"}`,
+    `Total: ${currency.format(budget.totalAmount)}`,
+  ].join("\n") : "";
+  return renderTemplate(template, { cliente: customerName, taller: garageName, vehiculo: vehicleLabel, orden: orderReference, estado: ORDER_STATUS_LABELS[status], mensaje_estado: statusCopy[status], presupuesto: budgetText });
 }
 
-export function buildWhatsAppStatusUrl(input: WhatsAppStatusMessage) {
+export function buildWhatsAppStatusUrl(input: WhatsAppStatusMessage, template?: string) {
   const phone = normalizeWhatsAppPhone(input.phone);
-  const message = buildWhatsAppStatusMessage(input);
+  const message = buildWhatsAppStatusMessage(input, template);
 
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }

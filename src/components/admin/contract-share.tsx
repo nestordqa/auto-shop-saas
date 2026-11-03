@@ -3,6 +3,7 @@
 import { Check, Copy, Download, Mail, MessageCircle } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 
+import { useMessageTemplate } from "@/components/messages/use-message-template";
 import { buildContractMessage, contractCode, type Contract } from "@/lib/contracts";
 import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
 
@@ -19,7 +20,8 @@ export function ContractShare({ contract, garageName, owner }: ContractShareProp
   const origin = useOrigin();
   const [copied, setCopied] = useState(false);
   const pdfPath = `/api/contracts/${contract.id}/pdf`;
-  const message = buildContractMessage({ contract, garageName, ownerName: owner.fullName, pdfUrl: `${origin}${pdfPath}` });
+  const template = useMessageTemplate("contract_new");
+  const message = buildContractMessage({ contract, garageName, ownerName: owner.fullName, pdfUrl: `${origin}${pdfPath}` }, template);
   const phone = owner.phone ? normalizeWhatsAppPhone(owner.phone) : "";
   const subject = `Nuevo contrato TorkeOS ${contractCode(contract.number)} · ${garageName}`;
 

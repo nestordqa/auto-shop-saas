@@ -5,23 +5,22 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { GarageLinkShare } from "@/components/admin/garage-link-share";
+import { SpecialtyPicker } from "@/components/garage/specialty-picker";
 import { PasswordInput } from "@/components/ui/password-input";
 import { PLAN_KEYS, PLANS, planSummary } from "@/lib/plans";
-import { MECHANIC_SPECIALTIES, MECHANIC_SPECIALTY_LABELS } from "@/lib/mechanics";
-
-const DEFAULT_SPECIALTY = MECHANIC_SPECIALTY_LABELS.general;
-const SPECIALTY_OPTIONS = MECHANIC_SPECIALTIES.map((value) => MECHANIC_SPECIALTY_LABELS[value]);
+import { specialtyKeysFrom, type SpecialtyOption } from "@/lib/mechanics";
+import { TRIAL_DAYS } from "@/lib/contracts";
 
 type OwnerOption = { id: string; fullName: string; documentId: string | null };
 export type ProspectOption = { id: string; name: string; contactName: string | null; phone: string | null; email: string | null; address: string | null; mapLocation: string | null; specialty: string | null; city: string | null; statusLabel: string };
 
-export function GarageCreateModal({ owners, prospects = [] }: { owners: OwnerOption[]; prospects?: ProspectOption[] }) {
+export function GarageCreateModal({ owners, prospects = [], specialties }: { owners: OwnerOption[]; prospects?: ProspectOption[]; specialties: SpecialtyOption[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [ownerMode, setOwnerMode] = useState<"existing" | "new">(owners.length ? "existing" : "new");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
-  const [created, setCreated] = useState<{ name: string; slug: string; ownerPhone: string | null; credentials?: { email: string; password: string } } | null>(null);
+  const [created, setCreated] = useState<{ name: string; slug: string; ownerPhone: string | null; contractId: string | null; trialEnds: string | null; credentials?: { email: string; password: string } } | null>(null);
   const [prospect, setProspect] = useState<ProspectOption>();
 
   function selectProspect(id: string) {
@@ -42,13 +41,14 @@ export function GarageCreateModal({ owners, prospects = [] }: { owners: OwnerOpt
     setPending(true);
     setError(undefined);
     const form = event.currentTarget;
-    const values = Object.fromEntries(new FormData(form));
+    const formData = new FormData(form);
+    const values = Object.fromEntries(formData);
     const response = await fetch("/api/admin/garages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...values, ownerMode }),
+      body: JSON.stringify({ ...values, specialties: formData.getAll("specialties"), ownerMode }),
     });
-    const result = await response.json() as { error?: string; garage?: { name: string; slug: string; ownerPhone: string | null } };
+    const result = await response.json() as { error?: string; garage?: { name: string; slug: string; ownerPhone: string | null; contractId: string | null; trialEnds: string | null } };
     setPending(false);
     if (!response.ok || !result.garage) {
       setError(result.error ?? "No se pudo crear el taller.");
@@ -72,6 +72,7 @@ export function GarageCreateModal({ owners, prospects = [] }: { owners: OwnerOpt
                 <CheckCircle2 className="mt-0.5 shrink-0" size={22} />
                 <p><strong>{created.name}</strong> ya está activo. Envíale al owner por WhatsApp su enlace de reservas{created.credentials ? ", su correo y su contraseña temporal" : ""}.</p>
               </div>
+              {created.contractId ? <p className="rounded-md border border-stone-200 bg-stone-50 p-3 text-sm">Contrato generado{created.trialEnds ? <> · <strong>prueba gratis ($0) hasta el {created.trialEnds}</strong></> : null}. <a href={`/dashboard/admin/contracts/${created.contractId}`} className="font-bold text-[#d9341d] underline">Ver y enviar contrato</a></p> : <p className="rounded-md bg-amber-50 p-3 text-sm font-semibold text-amber-900">No se pudo generar el contrato automáticamente. Créalo desde Contratos.</p>}
               <GarageLinkShare name={created.name} slug={created.slug} ownerPhone={created.ownerPhone} variant="full" credentials={created.credentials} />
               <button type="button" onClick={close} className="min-h-12 rounded-md border border-stone-300 px-5 font-bold">Listo</button>
             </div>
@@ -79,7 +80,7 @@ export function GarageCreateModal({ owners, prospects = [] }: { owners: OwnerOpt
           <form key={prospect?.id ?? "blank"} onSubmit={submit} className="grid gap-5 p-4 sm:p-6">
             {prospects.length > 0 && <label className="grid gap-1 rounded-md border border-dashed border-stone-300 bg-stone-50 p-3 text-sm font-bold">Cargar datos desde un prospecto (opcional)<select value={prospect?.id ?? ""} onChange={(event) => selectProspect(event.target.value)} className="min-h-12 rounded-md border border-stone-300 bg-white px-4 font-normal"><option value="">— Sin prospecto —</option>{prospects.map((item) => <option key={item.id} value={item.id}>{item.name}{item.contactName ? ` · ${item.contactName}` : ""} ({item.statusLabel})</option>)}</select>{prospect && <span className="text-xs font-normal text-stone-600">Revisa y completa lo que falte (cédula, correo, contraseña). Al crear el taller, el prospecto quedará como Convertido.</span>}</label>}
             <input type="hidden" name="prospectId" value={prospect?.id ?? ""} />
-            <fieldset className="grid gap-3"><legend className="mb-2 text-sm font-bold">Datos del taller</legend><input name="name" required minLength={2} defaultValue={prospect?.name} placeholder="Nombre comercial" className="min-h-12 rounded-md border border-stone-300 px-4" /><label className="grid gap-1 text-sm font-bold">Especialidad<select name="specialty" defaultValue={SPECIALTY_OPTIONS.find((label) => label === prospect?.specialty) ?? DEFAULT_SPECIALTY} className="min-h-12 rounded-md border border-stone-300 bg-white px-4 font-normal">{SPECIALTY_OPTIONS.map((label) => <option key={label} value={label}>{label}</option>)}</select></label><fieldset className="grid gap-2"><legend className="mb-1 text-sm font-bold">Plan elegido</legend>{PLAN_KEYS.map((key) => <label key={key} className="flex cursor-pointer items-start gap-3 rounded-md border border-stone-300 p-3 text-sm has-checked:border-[#ef3f26] has-checked:bg-red-50/40"><input type="radio" name="plan" value={key} defaultChecked={key === "bujia"} className="mt-1 accent-[#ef3f26]" /><span><span className="block font-bold">{PLANS[key].name} <span className="font-normal text-stone-500">· {PLANS[key].audience}</span></span><span className="text-stone-600">{planSummary(key).split(" · ").slice(1).join(" · ")}</span></span></label>)}<span className="text-xs font-normal text-stone-500">Empieza con el mes de prueba; este plan se sugerirá al generar su contrato de pago.</span></fieldset><textarea name="address" required minLength={5} rows={3} defaultValue={prospect ? [prospect.address, prospect.city].filter(Boolean).join(", ") : undefined} placeholder="Dirección completa" className="min-h-24 resize-none rounded-md border border-stone-300 p-4" /><input name="mapLocation" defaultValue={prospect?.mapLocation ?? ""} placeholder="URL o coordenadas del mapa (opcional)" className="min-h-12 rounded-md border border-stone-300 px-4" /></fieldset>
+            <fieldset className="grid gap-3"><legend className="mb-2 text-sm font-bold">Datos del taller</legend><input name="name" required minLength={2} defaultValue={prospect?.name} placeholder="Nombre comercial" className="min-h-12 rounded-md border border-stone-300 px-4" /><SpecialtyPicker options={specialties} defaultValue={specialtyKeysFrom(prospect?.specialty, specialties)} /><fieldset className="grid gap-2"><legend className="mb-1 text-sm font-bold">¿Cómo empieza?</legend><label className="flex cursor-pointer items-start gap-3 rounded-md border border-stone-300 p-3 text-sm has-checked:border-[#ef3f26] has-checked:bg-red-50/40"><input type="radio" name="start" value="trial" defaultChecked className="mt-1 accent-[#ef3f26]" /><span><span className="block font-bold">Mes de prueba gratis</span><span className="text-stone-600">$0 durante {TRIAL_DAYS} días con todas las funciones. Al vencer, el owner elige su plan desde su panel.</span></span></label>{PLAN_KEYS.map((key) => <label key={key} className="flex cursor-pointer items-start gap-3 rounded-md border border-stone-300 p-3 text-sm has-checked:border-[#ef3f26] has-checked:bg-red-50/40"><input type="radio" name="start" value={key} className="mt-1 accent-[#ef3f26]" /><span><span className="block font-bold">Plan {PLANS[key].name} desde hoy <span className="font-normal text-stone-500">· {PLANS[key].audience}</span></span><span className="text-stone-600">{planSummary(key).split(" · ").slice(1).join(" · ")}</span></span></label>)}<span className="text-xs font-normal text-stone-500">El contrato se genera automáticamente al crear el taller.</span></fieldset><textarea name="address" required minLength={5} rows={3} defaultValue={prospect ? [prospect.address, prospect.city].filter(Boolean).join(", ") : undefined} placeholder="Dirección completa" className="min-h-24 resize-none rounded-md border border-stone-300 p-4" /><input name="mapLocation" defaultValue={prospect?.mapLocation ?? ""} placeholder="URL o coordenadas del mapa (opcional)" className="min-h-12 rounded-md border border-stone-300 px-4" /></fieldset>
             <fieldset><legend className="text-sm font-bold">Owner</legend><div className="mt-2 grid grid-cols-2 rounded-md bg-stone-100 p-1"><button type="button" disabled={!owners.length} onClick={() => setOwnerMode("existing")} className={`min-h-11 rounded-sm px-3 text-sm font-bold ${ownerMode === "existing" ? "bg-white shadow-sm" : "text-stone-500"}`}>Owner existente</button><button type="button" onClick={() => setOwnerMode("new")} className={`min-h-11 rounded-sm px-3 text-sm font-bold ${ownerMode === "new" ? "bg-white shadow-sm" : "text-stone-500"}`}>Crear owner</button></div>
               {ownerMode === "existing" ? <select name="ownerId" required className="mt-3 min-h-12 w-full rounded-md border border-stone-300 bg-white px-4"><option value="">Selecciona un owner disponible</option>{owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.fullName}{owner.documentId ? ` · ${owner.documentId}` : ""}</option>)}</select> : <div className="mt-3 grid gap-3 sm:grid-cols-2"><input name="ownerName" required defaultValue={prospect?.contactName ?? ""} placeholder="Nombre completo" className="min-h-12 rounded-md border border-stone-300 px-4" /><input name="ownerEmail" required type="email" defaultValue={prospect?.email ?? ""} placeholder="Correo" className="min-h-12 rounded-md border border-stone-300 px-4" /><input name="ownerPhone" required type="tel" defaultValue={prospect?.phone ?? ""} placeholder="Teléfono" className="min-h-12 rounded-md border border-stone-300 px-4" /><input name="ownerDocument" required placeholder="Cédula / RIF" className="min-h-12 rounded-md border border-stone-300 px-4" /><PasswordInput name="temporaryPassword" required minLength={8} placeholder="Contraseña temporal" className="min-h-12 rounded-md border border-stone-300 px-4" containerClassName="sm:col-span-2" /></div>}
             </fieldset>

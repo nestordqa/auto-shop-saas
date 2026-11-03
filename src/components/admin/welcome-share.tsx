@@ -3,6 +3,7 @@
 import { Check, Copy, Mail, MessageCircle, PartyPopper } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 
+import { useMessageTemplate } from "@/components/messages/use-message-template";
 import { buildWelcomeMessage } from "@/lib/contracts";
 import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
 
@@ -19,7 +20,8 @@ export function WelcomeShare({ garageName, garageSlug, owner }: WelcomeShareProp
   const origin = useOrigin();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const message = buildWelcomeMessage({ ownerName: owner.fullName, garageName, garageUrl: `${origin}/${garageSlug}`, loginUrl: `${origin}/login` });
+  const template = useMessageTemplate("owner_welcome");
+  const message = buildWelcomeMessage({ ownerName: owner.fullName, garageName, garageUrl: `${origin}/${garageSlug}`, loginUrl: `${origin}/login` }, template);
   const phone = owner.phone ? normalizeWhatsAppPhone(owner.phone) : "";
 
   async function copy() {

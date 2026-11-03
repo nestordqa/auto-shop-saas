@@ -4,6 +4,7 @@ import { LoaderCircle, MessageCircle, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { useMessageTemplate } from "@/components/messages/use-message-template";
 import { buildTrialFollowUpMessage, FOLLOW_UP_LABELS, type Contract, type FollowUp } from "@/lib/contracts";
 import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
 
@@ -13,7 +14,8 @@ type TrialFollowUpProps = { contract: Contract; garageName: string; owner: { ful
 export function TrialFollowUp({ contract, garageName, owner }: TrialFollowUpProps) {
   const router = useRouter();
   const [pending, setPending] = useState<FollowUp | "reset">();
-  const message = buildTrialFollowUpMessage({ contract, garageName, ownerName: owner.fullName });
+  const template = useMessageTemplate("trial_follow_up");
+  const message = buildTrialFollowUpMessage({ contract, garageName, ownerName: owner.fullName }, template);
   const phone = owner.phone ? normalizeWhatsAppPhone(owner.phone) : "";
 
   async function save(value: FollowUp | null) {

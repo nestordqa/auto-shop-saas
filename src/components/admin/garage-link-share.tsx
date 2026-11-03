@@ -3,7 +3,9 @@
 import { Check, Copy, ExternalLink, MessageCircle } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 
-import { credentialLines } from "@/lib/credentials-message";
+import { useMessageTemplate } from "@/components/messages/use-message-template";
+import { credentialsText } from "@/lib/credentials-message";
+import { renderTemplate } from "@/lib/message-templates";
 import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
 
 type GarageLinkShareProps = {
@@ -26,13 +28,12 @@ export function GarageLinkShare({ name, slug, ownerPhone, variant = "compact", c
   const origin = useOrigin();
   const [copied, setCopied] = useState(false);
   const url = `${origin}/${slug}`;
-  const message = [
-    `¡Hola! Tu taller ${name} ya está activo en TorkeOS.`,
-    "",
-    `Comparte este enlace con tus clientes para que reserven sus citas: ${url}`,
-    "",
-    ...(credentials ? credentialLines({ origin, ...credentials }) : [`Entra a tu panel en ${origin}/login con el correo y la contraseña temporal que te dimos. Puedes cambiarla en Configuración › Contraseña.`]),
-  ].join("\n");
+  const template = useMessageTemplate("garage_created");
+  const credentialsTemplate = useMessageTemplate("credentials");
+  const access = credentials
+    ? credentialsText({ origin, ...credentials }, credentialsTemplate)
+    : `Entra a tu panel en ${origin}/login con el correo y la contraseña temporal que te dimos. Puedes cambiarla en Configuración › Contraseña.`;
+  const message = renderTemplate(template, { taller: name, enlace: url, acceso: access });
   const phone = ownerPhone ? normalizeWhatsAppPhone(ownerPhone) : "";
   const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 

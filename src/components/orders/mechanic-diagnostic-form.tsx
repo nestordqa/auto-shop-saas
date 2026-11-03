@@ -4,15 +4,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Circle, Flag, LoaderCircle, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
-import { INTERVENTION_LABELS, INTERVENTION_TYPES, VEHICLE_SYSTEMS, componentLabel, interventionLabel } from "@/lib/vehicle-systems";
+import { INTERVENTION_LABELS, INTERVENTION_TYPES, componentLabel, interventionLabel } from "@/lib/vehicle-systems";
 import type { Diagnostic, OrderStatus } from "@/types/domain";
 
 const diagnosticSchema = z.object({
   description: z.string().trim().min(3, "Describe el hallazgo con al menos 3 caracteres.").max(1000, "Máximo 1000 caracteres."),
   component: z.string(),
+  componentLabel: z.string().trim().max(120),
   interventionType: z.enum(INTERVENTION_TYPES),
 });
 
@@ -22,25 +23,32 @@ type MechanicDiagnosticFormProps = {
   orderId: string;
   initialStatus: OrderStatus;
   initialDiagnostics: Diagnostic[];
+  /** Repairs of the garage's specialties (repair_catalog), grouped by system in the select. */
+  repairOptions: { key: string; label: string; system: string }[];
 };
 
-export function MechanicDiagnosticForm({ orderId, initialStatus, initialDiagnostics }: MechanicDiagnosticFormProps) {
+const OTHER = "otro";
+
+export function MechanicDiagnosticForm({ orderId, initialStatus, initialDiagnostics, repairOptions }: MechanicDiagnosticFormProps) {
   const router = useRouter();
   const [diagnostics, setDiagnostics] = useState(initialDiagnostics);
   const [status, setStatus] = useState(initialStatus);
   const [advancing, setAdvancing] = useState(false);
   const [requestError, setRequestError] = useState<string>();
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<DiagnosticInput>({
+  const { control, register, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<DiagnosticInput>({
     resolver: zodResolver(diagnosticSchema),
-    defaultValues: { description: "", component: "", interventionType: "reemplazo" },
+    defaultValues: { description: "", component: "", componentLabel: "", interventionType: "reemplazo" },
   });
+  const selectedComponent = useWatch({ control, name: "component" });
+  const systems = [...new Set(repairOptions.map((option) => option.system))];
 
   async function addDiagnostic(values: DiagnosticInput) {
     setRequestError(undefined);
+    if (values.component === OTHER && !values.componentLabel) return setError("componentLabel", { message: "Escribe qué reparación es." });
     const response = await fetch(`/api/orders/${orderId}/diagnostics`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...values, component: values.component || null }),
+      body: JSON.stringify({ ...values, component: values.component || null, componentLabel: values.component === OTHER ? values.componentLabel : null }),
     });
     const result = await response.json() as { diagnostic?: Diagnostic; error?: string };
     if (!response.ok || !result.diagnostic) {
@@ -48,7 +56,7 @@ export function MechanicDiagnosticForm({ orderId, initialStatus, initialDiagnost
       return;
     }
     setDiagnostics((current) => [...current, result.diagnostic!]);
-    reset({ description: "", component: "", interventionType: values.interventionType });
+    reset({ description: "", component: "", componentLabel: "", interventionType: values.interventionType });
   }
 
   async function toggleDiagnostic(id: string) {
@@ -123,7 +131,7 @@ export function MechanicDiagnosticForm({ orderId, initialStatus, initialDiagnost
             <div className="min-w-0 flex-1 pt-1">
               <p className={`wrap-break-word whitespace-pre-line text-sm font-semibold leading-5 ${diagnostic.isCompleted ? "text-stone-500 line-through" : "text-stone-900"}`}>{diagnostic.description}</p>
               <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-medium text-stone-500">
-                {diagnostic.component && <span className="rounded bg-stone-900 px-1.5 py-0.5 font-bold text-white">{componentLabel(diagnostic.component)} · {interventionLabel(diagnostic.interventionType)}</span>}
+                {diagnostic.component && <span className="rounded bg-stone-900 px-1.5 py-0.5 font-bold text-white">{componentLabel(diagnostic.component, diagnostic.componentLabel)} · {interventionLabel(diagnostic.interventionType)}</span>}
                 Sin precio asignado
               </p>
             </div>
@@ -137,16 +145,19 @@ export function MechanicDiagnosticForm({ orderId, initialStatus, initialDiagnost
       <form onSubmit={handleSubmit(addDiagnostic)} className="border-t border-stone-200 bg-stone-50 p-4 sm:p-6">
         <div className="mb-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_200px]">
           <label className="grid gap-1 text-sm font-bold">
-            Componente
+            Reparación
             <select className="min-h-12 rounded-md border border-stone-300 bg-white px-3 text-base font-normal" {...register("component")}>
-              <option value="">Sin componente específico</option>
-              {VEHICLE_SYSTEMS.map((system) => (
-                <optgroup key={system.key} label={system.label}>
-                  {system.components.map((component) => <option key={component.key} value={component.key}>{component.label}</option>)}
+              <option value="">Sin reparación específica</option>
+              {systems.map((system) => (
+                <optgroup key={system} label={system}>
+                  {repairOptions.filter((option) => option.system === system).map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
                 </optgroup>
               ))}
+              <option value={OTHER}>Otro…</option>
             </select>
-            <span className="text-xs font-normal text-stone-500">Alimenta la historia clínica del vehículo.</span>
+            {selectedComponent === OTHER && <input placeholder="¿Qué reparación es?" maxLength={120} className="mt-1 min-h-12 rounded-md border border-stone-300 bg-white px-3 text-base font-normal" {...register("componentLabel")} />}
+            {errors.componentLabel && <span className="text-sm font-medium text-red-700">{errors.componentLabel.message}</span>}
+            <span className="text-xs font-normal text-stone-500">Según las especialidades del taller. Alimenta la historia clínica del vehículo.</span>
           </label>
           <label className="grid content-start gap-1 text-sm font-bold">
             Intervención

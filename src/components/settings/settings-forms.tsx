@@ -4,14 +4,14 @@ import { Building2, Check, KeyRound, LoaderCircle, UserRound } from "lucide-reac
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent, type ReactNode } from "react";
 
+import { SpecialtyPicker } from "@/components/garage/specialty-picker";
 import { PasswordInput } from "@/components/ui/password-input";
-import { MECHANIC_SPECIALTIES, MECHANIC_SPECIALTY_LABELS } from "@/lib/mechanics";
+import type { SpecialtyOption } from "@/lib/mechanics";
 
 export type ProfileValues = { fullName: string; email: string; phone: string; phone2: string; documentId: string };
-export type GarageValues = { name: string; specialty: string; address: string; mapLocation: string };
+export type GarageValues = { name: string; specialties: string[]; address: string; mapLocation: string };
 
 const input = "min-h-12 w-full rounded-md border border-stone-300 bg-white px-4 font-normal";
-const SPECIALTY_OPTIONS = MECHANIC_SPECIALTIES.map((value) => MECHANIC_SPECIALTY_LABELS[value]);
 
 /** Sends a form as JSON and tracks pending / saved / error for its button. */
 function useSave(url: string, method: "PATCH" | "POST") {
@@ -23,7 +23,8 @@ function useSave(url: string, method: "PATCH" | "POST") {
   async function submit(event: FormEvent<HTMLFormElement>, after?: (form: HTMLFormElement) => void) {
     event.preventDefault();
     const form = event.currentTarget;
-    const body = JSON.stringify(Object.fromEntries(new FormData(form)));
+    const data = new FormData(form);
+    const body = JSON.stringify({ ...Object.fromEntries(data), ...(data.has("specialties") || form.querySelector("[name=specialties]") ? { specialties: data.getAll("specialties") } : {}) });
     setPending(true);
     setSaved(false);
     setError(undefined);
@@ -96,14 +97,13 @@ export function PasswordForm() {
   );
 }
 
-export function GarageForm({ values }: { values: GarageValues }) {
+export function GarageForm({ values, specialtyOptions }: { values: GarageValues; specialtyOptions: SpecialtyOption[] }) {
   const { pending, saved, error, submit } = useSave("/api/owner/garage", "PATCH");
-  const specialties = SPECIALTY_OPTIONS.includes(values.specialty) || !values.specialty ? SPECIALTY_OPTIONS : [values.specialty, ...SPECIALTY_OPTIONS];
   return (
     <Card icon={<Building2 size={20} />} title="Datos del taller" description="Lo que ven tus clientes al reservar. Solo el owner puede editarlos.">
       <form onSubmit={(event) => submit(event)} className="grid gap-4 p-5 sm:grid-cols-2">
-        <label className="grid gap-1 text-sm font-bold">Nombre comercial<input name="name" required minLength={2} defaultValue={values.name} className={input} /></label>
-        <label className="grid gap-1 text-sm font-bold">Especialidad<select name="specialty" defaultValue={values.specialty || MECHANIC_SPECIALTY_LABELS.general} className={input}>{specialties.map((label) => <option key={label} value={label}>{label}</option>)}</select></label>
+        <label className="grid gap-1 text-sm font-bold sm:col-span-2">Nombre comercial<input name="name" required minLength={2} defaultValue={values.name} className={input} /></label>
+        <div className="sm:col-span-2"><SpecialtyPicker options={specialtyOptions} defaultValue={values.specialties} /></div>
         <label className="grid gap-1 text-sm font-bold sm:col-span-2">Dirección<textarea name="address" required minLength={5} rows={2} defaultValue={values.address} className={`${input} resize-none py-3`} /><span className="text-xs font-normal text-stone-500">También actualiza la sucursal principal. Las demás sucursales se editan en Sucursales.</span></label>
         <label className="grid gap-1 text-sm font-bold sm:col-span-2">Ubicación en el mapa (opcional)<input name="mapLocation" defaultValue={values.mapLocation} placeholder="URL de Google Maps o coordenadas" className={input} /></label>
         <SaveRow pending={pending} saved={saved} error={error} label="Guardar taller" />

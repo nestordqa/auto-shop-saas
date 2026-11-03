@@ -19,6 +19,8 @@ export type GarageBillingStatus = {
   current: Contract | null;
   /** The free trial ended and no paid contract replaced it: the owner must choose a plan. */
   trialExpired: boolean;
+  /** Days since the trial ended without choosing a plan. */
+  trialDaysOver: number;
   /** Closed, unpaid periods (oldest first). */
   due: DuePeriod[];
   owed: number;
@@ -46,19 +48,23 @@ export function computeBillingStatuses(contracts: Contract[], billing: ContractB
     // A payment under review does not count against the garage.
     const unreported = due.filter((period) => period.report?.status !== "reported");
     const daysOverdue = unreported.reduce((max, period) => Math.max(max, period.daysOverdue), 0);
+    const trialExpired = current?.kind === "trial" && Boolean(current.end_date && current.end_date < today);
+    // A finished trial without a plan counts like arrears: suspended after LOCK_AFTER_DAYS.
+    const trialDaysOver = trialExpired ? daysBetween(current!.end_date!, today) : 0;
     byGarage.set(garageId, {
       current,
-      trialExpired: current?.kind === "trial" && Boolean(current.end_date && current.end_date < today),
+      trialExpired,
+      trialDaysOver,
       due,
       owed: Math.round(due.reduce((total, period) => total + period.amount, 0) * 100) / 100,
       daysOverdue,
-      locked: daysOverdue >= LOCK_AFTER_DAYS,
+      locked: daysOverdue >= LOCK_AFTER_DAYS || trialDaysOver >= LOCK_AFTER_DAYS,
     });
   }
   return byGarage;
 }
 
-const EMPTY: GarageBillingStatus = { current: null, trialExpired: false, due: [], owed: 0, daysOverdue: 0, locked: false };
+const EMPTY: GarageBillingStatus = { current: null, trialExpired: false, trialDaysOver: 0, due: [], owed: 0, daysOverdue: 0, locked: false };
 
 /** Billing status of one garage. Cached per request: layouts, pages and guards share it. */
 export const getGarageBillingStatus = cache(async (garageId: string): Promise<GarageBillingStatus> => {

@@ -30,7 +30,7 @@ export function DiagnosticReport({ diagnostics, budget, subtitle }: { diagnostic
                 {item.description}
               </p>
               <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-stone-500">
-                {item.component && <span className="rounded bg-stone-900 px-1.5 py-0.5 font-bold text-white">{componentLabel(item.component)} · {interventionLabel(item.interventionType)}</span>}
+                {item.component && <span className="rounded bg-stone-900 px-1.5 py-0.5 font-bold text-white">{componentLabel(item.component, item.componentLabel)} · {interventionLabel(item.interventionType)}</span>}
                 {item.partBrand && <span className="rounded bg-stone-100 px-1.5 py-0.5 font-semibold text-stone-700">Marca: {item.partBrand}</span>}
                 <span className="inline-flex items-center gap-1">{item.isCompleted ? <CheckCircle2 size={13} className="text-emerald-600" /> : <Circle size={13} />}{item.isCompleted ? "Completado" : "Pendiente"}</span>
               </p>

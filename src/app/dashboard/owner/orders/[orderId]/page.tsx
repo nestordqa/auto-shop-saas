@@ -17,12 +17,12 @@ import { canPayOrder } from "@/lib/payments";
 import { getOrderPayments } from "@/lib/payments-data";
 import { formatAppointmentDateTime } from "@/lib/appointments";
 import { requireOwnerGarage } from "@/lib/auth/require-owner-garage";
+import { getGarageRepairOptions } from "@/lib/repair-catalog";
 import { getOrderIntake } from "@/lib/intake-data";
 import { isStorageConfigured } from "@/lib/storage/intake-photos";
 import { getVehicleHistory } from "@/lib/vehicle-history";
 import {
-  MECHANIC_SPECIALTY_LABELS,
-  type MechanicSpecialty,
+  specialtyLabel,
 } from "@/lib/mechanics";
 import {
   type Diagnostic,
@@ -70,7 +70,7 @@ export default async function OwnerOrderDetailPage({
       .maybeSingle(),
     dataClient
       .from("diagnostics")
-      .select("id, description, price, is_completed, component, intervention_type, part_brand")
+      .select("id, description, price, is_completed, component, component_label, intervention_type, part_brand")
       .eq("order_id", order.id)
       .order("created_at"),
     dataClient
@@ -112,12 +112,14 @@ export default async function OwnerOrderDetailPage({
     (profile) => profile.id === mechanic?.profile_id,
   );
   const status = order.status as OrderStatus;
+  const repairOptions = status === "ingresado" ? await getGarageRepairOptions(dataClient, garage.id) : [];
   const diagnostics: Diagnostic[] = (diagnosticRows ?? []).map((item) => ({
     id: item.id,
     description: item.description,
     price: item.price,
     isCompleted: item.is_completed,
     component: item.component,
+    componentLabel: item.component_label,
     interventionType: item.intervention_type,
     partBrand: item.part_brand,
   }));
@@ -129,7 +131,7 @@ export default async function OwnerOrderDetailPage({
     name:
       profiles?.find((profile) => profile.id === item.profile_id)?.full_name ??
       "Mecánico",
-    specialty: MECHANIC_SPECIALTY_LABELS[item.specialty as MechanicSpecialty],
+    specialty: specialtyLabel(item.specialty),
   }));
 
   return (
@@ -207,6 +209,7 @@ export default async function OwnerOrderDetailPage({
             orderId={order.id}
             initialStatus={status}
             initialDiagnostics={diagnostics}
+            repairOptions={repairOptions}
           />
         </div>
       )}

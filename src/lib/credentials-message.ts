@@ -1,14 +1,6 @@
-/** Login lines for WhatsApp welcome messages: email, temporary password and how to replace it. */
-export function credentialLines({ origin, email, password }: { origin: string; email: string; password: string }) {
-  return [
-    `Entra en ${origin}/login con:`,
-    `• Correo: ${email}`,
-    `• Contraseña temporal: ${password}`,
-    "",
-    "Esta contraseña es temporal. Puedes cambiarla de dos formas:",
-    "• Inicia sesión y ve a Configuración › Contraseña.",
-    `• O en la pantalla de inicio de sesión toca «¿Olvidaste tu contraseña?» (${origin}/forgot-password) y sigue el enlace que te llegará al correo.`,
-    "",
-    "Al entrar por primera vez te mostraremos cómo instalar la app y activar las notificaciones.",
-  ];
+import { MESSAGE_TEMPLATES, renderTemplate } from "@/lib/message-templates";
+
+/** Login block for WhatsApp welcome messages: email, temporary password and how to replace it. */
+export function credentialsText({ origin, email, password }: { origin: string; email: string; password: string }, template = MESSAGE_TEMPLATES.credentials.body) {
+  return renderTemplate(template, { panel: `${origin}/login`, correo: email, clave: password, recuperar: `${origin}/forgot-password` });
 }

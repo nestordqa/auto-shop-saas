@@ -4,6 +4,7 @@ import { ClipboardList, LoaderCircle, MessageCircle, Trash2 } from "lucide-react
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { useMessageTemplate } from "@/components/messages/use-message-template";
 import { buildRequirementsMessage } from "@/lib/contracts";
 import { PROSPECT_STATUS_LABELS, PROSPECT_STATUS_STYLES, PROSPECT_STATUSES, type ProspectStatus } from "@/lib/prospects";
 import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
@@ -34,7 +35,8 @@ export function ProspectRowActions({ id, name, contactName, phone, status }: { i
   const router = useRouter();
   const [removing, setRemoving] = useState(false);
   const digits = phone ? normalizeWhatsAppPhone(phone) : "";
-  const requirements = `https://wa.me/${digits}?text=${encodeURIComponent(buildRequirementsMessage(contactName ?? undefined))}`;
+  const requirementsTemplate = useMessageTemplate("prospect_requirements");
+  const requirements = `https://wa.me/${digits}?text=${encodeURIComponent(buildRequirementsMessage(contactName ?? undefined, requirementsTemplate))}`;
   const canAdvance = ["new", "contacted", "interested"].includes(status);
 
   async function remove() {

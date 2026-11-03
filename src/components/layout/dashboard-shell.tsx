@@ -8,6 +8,7 @@ import {
   ClipboardList,
   FileDown,
   LifeBuoy,
+  MessageSquareText,
   FileSignature,
   Gauge,
   LogOut,
@@ -25,10 +26,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
+import { useMessageTemplate } from "@/components/messages/use-message-template";
 import { TorkeMark } from "@/components/brand/torke-logo";
 import { LiveRefresh } from "@/components/layout/live-refresh";
 import { NotificationSettings } from "@/components/pwa/notification-settings";
 import { torkeosSupportUrl } from "@/lib/contact";
+import { renderTemplate } from "@/lib/message-templates";
 import { unsubscribeFromPush } from "@/lib/push-client";
 import { AppOnboardingModal } from "@/components/pwa/app-onboarding-modal";
 import { RouteProgress } from "@/components/ui/route-progress";
@@ -51,8 +54,10 @@ const navigation = {
     { label: "Talleres", href: "/dashboard/admin/garages", icon: Wrench },
     { label: "Usuarios", href: "/dashboard/admin/users", icon: Users },
     { label: "Catálogo", href: "/dashboard/admin/catalog", icon: CarFront },
+    { label: "Reparaciones", href: "/dashboard/admin/repairs", icon: Wrench },
     { label: "Contratos", href: "/dashboard/admin/contracts", icon: FileSignature },
     { label: "Notificaciones", href: "/dashboard/admin/notifications", icon: Bell },
+    { label: "Mensajes WhatsApp", href: "/dashboard/admin/messages", icon: MessageSquareText },
     { label: "Facturación", href: "/dashboard/admin/billing", icon: ReceiptText },
     { label: "Medios de pago", href: "/dashboard/admin/payment-methods", icon: Wallet },
   ],
@@ -93,7 +98,8 @@ type DashboardShellProps = {
 
 export function DashboardShell({ children, role, userName, garageContext }: DashboardShellProps) {
   // Support for every role: TorkeOS support WhatsApp (NEXT_PUBLIC_TORKEOS_SUPPORT_WHATSAPP), prefilled with who is asking.
-  const supportUrl = torkeosSupportUrl(`Hola, necesito soporte con TorkeOS. Soy ${userName} (${roleLabels[role]}${garageContext ? ` · ${garageContext.name}` : ""}).`);
+  const supportTemplate = useMessageTemplate("support_request");
+  const supportUrl = torkeosSupportUrl(renderTemplate(supportTemplate, { usuario: userName, rol: `${roleLabels[role]}${garageContext ? ` · ${garageContext.name}` : ""}` }));
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const items = navigation[role];

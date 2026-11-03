@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
+import { useMessageTemplate } from "@/components/messages/use-message-template";
 import { componentLabel, diagnosticDetail } from "@/lib/vehicle-systems";
 import { buildWhatsAppStatusMessage, buildWhatsAppStatusUrl } from "@/lib/whatsapp";
 import { ORDER_STATUS_LABELS, type Diagnostic } from "@/types/domain";
@@ -50,6 +51,7 @@ export function OwnerBudgetEditor({
   const router = useRouter();
   const [saved, setSaved] = useState(false);
   const [requestError, setRequestError] = useState<string>();
+  const statusTemplate = useMessageTemplate("order_status");
   const { control, register, handleSubmit, formState: { errors, isSubmitting } } = useForm<BudgetInput>({
     resolver: zodResolver(budgetSchema),
     defaultValues: {
@@ -74,7 +76,7 @@ export function OwnerBudgetEditor({
     budget: {
       diagnostics: (values.diagnostics ?? []).map((diagnostic) => ({
         description: diagnostic.description ?? "Hallazgo",
-        detail: diagnosticDetail({ component: diagnostic.component, interventionType: initialDiagnostics.find((item) => item.id === diagnostic.id)?.interventionType, partBrand: diagnostic.partBrand }),
+        detail: diagnosticDetail({ component: diagnostic.component, componentLabel: initialDiagnostics.find((item) => item.id === diagnostic.id)?.componentLabel, interventionType: initialDiagnostics.find((item) => item.id === diagnostic.id)?.interventionType, partBrand: diagnostic.partBrand }),
         price: Number(diagnostic.price) || 0,
       })),
       includesParts: Boolean(values.includesParts),
@@ -117,7 +119,7 @@ export function OwnerBudgetEditor({
               <div className="min-w-0">
                 <span className="text-xs font-bold text-stone-400">0{index + 1}</span>
                 <p className="mt-1 wrap-break-word whitespace-pre-line text-sm font-semibold leading-5">{field.description}</p>
-                {field.component && <span className="mt-1 inline-block rounded bg-stone-900 px-1.5 py-0.5 text-[11px] font-bold text-white">{componentLabel(field.component)}</span>}
+                {field.component && <span className="mt-1 inline-block rounded bg-stone-900 px-1.5 py-0.5 text-[11px] font-bold text-white">{componentLabel(field.component, initialDiagnostics.find((item) => item.id === field.id)?.componentLabel)}</span>}
                 <input
                   aria-label="Marca del repuesto"
                   placeholder="Marca del repuesto (opcional)"
@@ -151,7 +153,7 @@ export function OwnerBudgetEditor({
             <strong className="text-xl">{currency.format(total)}</strong>
           </div>
           <button disabled={isSubmitting} type="submit" className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#ef3f26] px-5 font-bold text-white hover:bg-[#d9341d] disabled:opacity-60 sm:col-span-2">
-            <CheckCircle2 size={20} /> Guardar y publicar presupuesto
+            <CheckCircle2 size={20} /> Guardar y enviar notificación de presupuesto
           </button>
           {saved && <p role="status" className="text-center text-sm font-semibold text-emerald-700 sm:col-span-2">Presupuesto actualizado correctamente.</p>}
           {requestError && <p role="alert" className="text-center text-sm font-semibold text-red-700 sm:col-span-2">{requestError}</p>}
@@ -167,10 +169,10 @@ export function OwnerBudgetEditor({
           </div>
         </div>
         <div className="m-4 rounded-md bg-white p-4 text-sm leading-6 text-stone-700 shadow-sm">
-          {buildWhatsAppStatusMessage(messageInput).split("\n").map((line, index) => <span key={`${line}-${index}`}>{line || <br />}<br /></span>)}
+          {buildWhatsAppStatusMessage(messageInput, statusTemplate).split("\n").map((line, index) => <span key={`${line}-${index}`}>{line || <br />}<br /></span>)}
         </div>
         <div className="p-4 pt-0">
-          <a href={buildWhatsAppStatusUrl(messageInput)} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#1f9d55] px-4 font-bold text-white hover:bg-[#178247]">
+          <a href={buildWhatsAppStatusUrl(messageInput, statusTemplate)} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#1f9d55] px-4 font-bold text-white hover:bg-[#178247]">
             Abrir WhatsApp <ExternalLink size={18} />
           </a>
         </div>

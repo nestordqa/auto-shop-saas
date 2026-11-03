@@ -3,6 +3,7 @@
 import { Check, ClipboardList, Copy, MessageCircle, X } from "lucide-react";
 import { useState } from "react";
 
+import { useMessageTemplate } from "@/components/messages/use-message-template";
 import { buildRequirementsMessage } from "@/lib/contracts";
 import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
 
@@ -12,7 +13,8 @@ export function RequirementsShareModal() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [copied, setCopied] = useState(false);
-  const message = buildRequirementsMessage(name.trim() || undefined);
+  const template = useMessageTemplate("prospect_requirements");
+  const message = buildRequirementsMessage(name.trim() || undefined, template);
   const whatsappPhone = phone ? normalizeWhatsAppPhone(phone) : "";
 
   async function copy() {

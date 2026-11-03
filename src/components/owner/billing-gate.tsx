@@ -27,6 +27,19 @@ export async function BillingGate({ garage, role, children }: { garage: { id: st
   const admin = isOwner && (status.locked || status.daysOverdue > 0) ? createAdminClient() : null;
   const methods = admin ? await getPaymentMethods(admin, null, { enabledOnly: true }) : [];
 
+  if (status.locked && status.trialExpired) {
+    return (
+      <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
+        <section className="rounded-lg border border-red-200 bg-white p-6 shadow-sm">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase text-red-700"><Lock size={15} /> Acceso suspendido</p>
+          <h1 className="mt-2 font-display text-3xl font-bold">La prueba gratis de {garage.name} terminó</h1>
+          <p className="mt-2 text-sm text-stone-600">{isOwner ? `Pasaron más de ${LOCK_AFTER_DAYS} días sin elegir un plan, así que el acceso de tu equipo quedó suspendido. Tus datos están a salvo y tus clientes siguen viendo sus órdenes. Elige tu plan para reactivarlo al instante.` : "El dueño del taller debe elegir un plan para reactivar el acceso."}</p>
+        </section>
+        {isOwner && <PlanChooserModal garageName={garage.name} suggested={(garage.plan ?? "bujia") as PlanKey} extraBranchFee={EXTRA_BRANCH_FEE} />}
+      </div>
+    );
+  }
+
   if (status.locked) {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">

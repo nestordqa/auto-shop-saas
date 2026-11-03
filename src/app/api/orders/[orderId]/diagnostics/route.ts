@@ -4,11 +4,14 @@ import { z } from "zod";
 import { getAuthorizedDiagnosticOrder } from "@/lib/auth/diagnostic-order-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { COMPONENT_KEYS, INTERVENTION_TYPES } from "@/lib/vehicle-systems";
+import { OTHER_REPAIR, resolveRepairLabel } from "@/lib/repair-catalog";
+import { INTERVENTION_TYPES } from "@/lib/vehicle-systems";
 
 const createDiagnosticSchema = z.object({
   description: z.string().trim().min(3).max(1000),
-  component: z.enum(COMPONENT_KEYS).nullish(),
+  component: z.string().regex(/^[a-z0-9_]+$/).max(60).nullish(),
+  /** Repair name written by the mechanic when choosing "Otro…". */
+  componentLabel: z.string().trim().max(120).nullish(),
   interventionType: z.enum(INTERVENTION_TYPES).nullish(),
 });
 
@@ -36,16 +39,23 @@ export async function POST(
     return NextResponse.json({ error: "Solo puedes diagnosticar una orden ingresada de tu taller o asignada a tu perfil." }, { status: 403 });
   }
 
+  const component = parsed.data.component ?? null;
+  const label = component ? await resolveRepairLabel(admin, component, parsed.data.componentLabel) : null;
+  if (component && !label) {
+    return NextResponse.json({ error: component === OTHER_REPAIR ? "Escribe qué reparación es (opción «Otro…»)." : "Esa reparación no está en el catálogo." }, { status: 400 });
+  }
+
   const { data, error } = await admin
     .from("diagnostics")
     .insert({
       order_id: orderId,
       description: parsed.data.description,
-      component: parsed.data.component ?? null,
-      intervention_type: parsed.data.component ? parsed.data.interventionType ?? "reparacion" : null,
+      component,
+      component_label: label,
+      intervention_type: component ? parsed.data.interventionType ?? "reparacion" : null,
       created_by: user.id,
     })
-    .select("id, description, price, is_completed, component, intervention_type")
+    .select("id, description, price, is_completed, component, component_label, intervention_type")
     .single();
 
   if (error) {
@@ -59,6 +69,7 @@ export async function POST(
       price: data.price,
       isCompleted: data.is_completed,
       component: data.component,
+      componentLabel: data.component_label,
       interventionType: data.intervention_type,
     },
   }, { status: 201 });

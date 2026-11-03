@@ -116,7 +116,7 @@ export function VehicleHistoryPanel({ history, currentMileage, showHints = true,
                     {visit.items.map((item, itemIndex) => (
                       <li key={itemIndex} className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
                         <span className="min-w-0">
-                          {item.component && <span className="mr-1.5 rounded bg-stone-900 px-1.5 py-0.5 text-[11px] font-bold text-white">{componentLabel(item.component)}{item.interventionType ? ` · ${interventionLabel(item.interventionType)}` : ""}</span>}
+                          {item.component && <span className="mr-1.5 rounded bg-stone-900 px-1.5 py-0.5 text-[11px] font-bold text-white">{componentLabel(item.component, item.componentLabel)}{item.interventionType ? ` · ${interventionLabel(item.interventionType)}` : ""}</span>}
                           {item.description}
                           {item.partBrand && <span className="text-stone-500"> · {item.partBrand}</span>}
                         </span>

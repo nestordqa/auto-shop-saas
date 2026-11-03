@@ -44,7 +44,7 @@ export async function loadClientPortal(userId: string) {
   const orderIds = (orderRows ?? []).map(({ id }) => id);
   const [{ data: budgets }, { data: diagnostics }, { data: history }, { data: garages }, intakes, homeGarage] = await Promise.all([
     orderIds.length ? dataClient.from("budgets").select("order_id, includes_parts, total_amount, approved").in("order_id", orderIds) : Promise.resolve({ data: [] }),
-    orderIds.length ? dataClient.from("diagnostics").select("order_id, description, price, is_completed, component, intervention_type, part_brand").in("order_id", orderIds).order("created_at") : Promise.resolve({ data: [] }),
+    orderIds.length ? dataClient.from("diagnostics").select("order_id, description, price, is_completed, component, component_label, intervention_type, part_brand").in("order_id", orderIds).order("created_at") : Promise.resolve({ data: [] }),
     orderIds.length ? dataClient.from("order_status_history").select("order_id, status, changed_at").in("order_id", orderIds).order("changed_at") : Promise.resolve({ data: [] }),
     dataClient.from("garages").select("id, name, address, specialty").order("name"),
     getOrderIntakes(dataClient, orderIds),
@@ -84,7 +84,7 @@ export async function loadClientPortal(userId: string) {
         includesParts: budget.includes_parts,
         totalAmount: Number(budget.total_amount),
         approved: budget.approved,
-        diagnostics: (diagnostics ?? []).filter((item) => item.order_id === order.id).map((item) => ({ description: item.description, detail: diagnosticDetail({ component: item.component, interventionType: item.intervention_type, partBrand: item.part_brand }), price: Number(item.price ?? 0), done: item.is_completed })),
+        diagnostics: (diagnostics ?? []).filter((item) => item.order_id === order.id).map((item) => ({ description: item.description, detail: diagnosticDetail({ component: item.component, componentLabel: item.component_label, interventionType: item.intervention_type, partBrand: item.part_brand }), price: Number(item.price ?? 0), done: item.is_completed })),
       } : null,
     }];
   });
