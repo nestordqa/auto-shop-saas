@@ -1,6 +1,6 @@
 import type { VehicleIntake } from "@/lib/intake";
 import { branchLabel, getBranchesByGarage } from "@/lib/branches";
-import { resolveClientGarage } from "@/lib/client-garage";
+import { resolveClientGarage, visitedGarageSlugs } from "@/lib/client-garage";
 import { getOrderIntakes } from "@/lib/intake-data";
 import { canPayOrder, type OrderPayment, type PaymentMethod } from "@/lib/payments";
 import { getOrderPayments, getPaymentMethods } from "@/lib/payments-data";
@@ -46,10 +46,11 @@ export async function loadClientPortal(userId: string) {
     orderIds.length ? dataClient.from("budgets").select("order_id, includes_parts, total_amount, approved").in("order_id", orderIds) : Promise.resolve({ data: [] }),
     orderIds.length ? dataClient.from("diagnostics").select("order_id, description, price, is_completed, component, component_label, intervention_type, part_brand").in("order_id", orderIds).order("created_at") : Promise.resolve({ data: [] }),
     orderIds.length ? dataClient.from("order_status_history").select("order_id, status, changed_at").in("order_id", orderIds).order("changed_at") : Promise.resolve({ data: [] }),
-    dataClient.from("garages").select("id, name, address, specialty").order("name"),
+    dataClient.from("garages").select("id, name, slug, address, specialty").order("name"),
     getOrderIntakes(dataClient, orderIds),
     admin ? resolveClientGarage(admin) : Promise.resolve(null),
   ]);
+  const visitedSlugs = await visitedGarageSlugs();
 
   // All branches (inactive too: past orders may point to one); booking only offers the active ones.
   const branchesByGarage = await getBranchesByGarage(dataClient, (garages ?? []).map((garage) => garage.id));
@@ -97,5 +98,11 @@ export async function loadClientPortal(userId: string) {
     }),
     garages: (garages ?? []).map((garage) => ({ id: garage.id, label: garage.name, address: garage.address, specialty: garage.specialty, branches: (branchesByGarage.get(garage.id) ?? []).filter((branch) => branch.is_active).map((branch) => ({ id: branch.id, name: branch.name, address: branch.address })) })),
     defaultGarageId: homeGarage?.id,
+    /** Garages the client has used (link history on this device, then past orders): "Mis talleres frecuentes". */
+    frequentGarageIds: [...new Set([
+      ...(homeGarage ? [homeGarage.id] : []),
+      ...visitedSlugs.map((slug) => garages?.find((garage) => (garage as { slug?: string }).slug === slug)?.id),
+      ...(orderRows ?? []).map((order) => order.garage_id as string),
+    ].filter((id): id is string => Boolean(id)))],
   };
 }

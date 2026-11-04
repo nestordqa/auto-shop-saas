@@ -2,7 +2,7 @@
 
 import { CalendarSearch, CheckCircle2, LoaderCircle, MapPin, Plus, Wrench, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { Fragment, useState, type FormEvent } from "react";
 
 import { formatSlotTime } from "@/lib/schedule";
 
@@ -21,9 +21,11 @@ type AppointmentBookingProps = {
   defaultGarageId?: string;
   /** Preselected branch (garage link with `?sucursal=`). */
   defaultBranchId?: string;
+  /** Garages the client already uses, most relevant first; with two or more they are offered as "Mis talleres frecuentes". */
+  frequentGarageIds?: string[];
 };
 
-export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultGarageId, defaultBranchId }: AppointmentBookingProps) {
+export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultGarageId, defaultBranchId, frequentGarageIds = [] }: AppointmentBookingProps) {
   const router = useRouter();
   const [slots, setSlots] = useState<string[]>([]);
   const [selectedTime, setSelectedTime] = useState("");
@@ -31,7 +33,9 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ error?: string; success?: string }>({});
   const today = new Date().toLocaleDateString("en-CA");
-  const [garageId, setGarageId] = useState(lockedGarageId ?? defaultGarageId ?? "");
+  const frequent = frequentGarageIds.flatMap((id) => garages.find((item) => item.id === id) ?? []);
+  const showFrequent = !lockedGarageId && frequent.length > 1;
+  const [garageId, setGarageId] = useState(lockedGarageId ?? defaultGarageId ?? (frequent.length ? frequent[0].id : ""));
   const [pickerOpen, setPickerOpen] = useState(false);
   const [branchId, setBranchId] = useState(defaultBranchId ?? "");
 
@@ -95,10 +99,26 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
   return (
     <form onSubmit={submit} className="mt-4 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm">
       <div className="grid gap-4 p-5 md:grid-cols-3">
-        <div className="grid min-w-0 content-start gap-2 text-sm font-bold">
-          Taller
+        <div className={`grid min-w-0 content-start gap-2 text-sm font-bold ${showFrequent ? "md:col-span-3" : ""}`}>
+          {showFrequent ? "Mis talleres frecuentes" : "Taller"}
           <input type="hidden" name="garageId" value={garageId} />
-          {lockedGarageId ?? defaultGarageId ? (
+          {showFrequent ? (
+            <>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {(frequent.some((item) => item.id === garageId) ? frequent : [...frequent, ...garages.filter((item) => item.id === garageId)]).map((item) => (
+                  <button key={item.id} type="button" onClick={() => chooseGarage(item.id)} aria-pressed={item.id === garageId} className={`flex min-w-0 items-start gap-3 rounded-md border p-3 text-left font-normal ${item.id === garageId ? "border-[#ef3f26] bg-orange-50" : "border-stone-300 bg-white hover:bg-stone-50"}`}>
+                    <span className={`grid size-9 shrink-0 place-items-center rounded-md ${item.id === garageId ? "bg-[#ef3f26] text-white" : "bg-stone-900 text-white"}`}><Wrench size={16} /></span>
+                    <span className="min-w-0">
+                      <span className="block truncate font-bold text-stone-900">{item.label}</span>
+                      {item.specialty && <span className="block truncate text-xs font-semibold text-[#d9341d]">{item.specialty}</span>}
+                      {item.address && <span className="block truncate text-xs text-stone-500">{item.address}</span>}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              {otherGarages.length > 0 && <button type="button" onClick={() => setPickerOpen(true)} className="flex items-center gap-1 justify-self-start text-xs font-bold text-[#d9341d] hover:underline"><Plus size={14} /> Ver más talleres</button>}
+            </>
+          ) : lockedGarageId ?? defaultGarageId ? (
             <>
               <div className="min-h-12 min-w-0 rounded-md border border-stone-200 bg-stone-100 px-3 py-2">
                 <p className="truncate text-stone-800">{garage?.label ?? "Taller seleccionado"}</p>
@@ -134,7 +154,8 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
               <button type="button" onClick={() => setPickerOpen(false)} className="grid size-10 place-items-center rounded-md hover:bg-stone-100" aria-label="Cerrar"><X size={20} /></button>
             </div>
             <ul className="divide-y divide-stone-100">
-              {garages.map((item) => (
+              {[...frequent, ...garages.filter((item) => !frequent.includes(item))].map((item, index) => (<Fragment key={item.id}>
+                {frequent.length > 0 && (index === 0 || index === frequent.length) && <li className="bg-stone-50 px-4 py-2 text-xs font-bold uppercase text-stone-500">{index === 0 ? "Mis talleres frecuentes" : "Otros talleres"}</li>}
                 <li key={item.id}>
                   <button type="button" onClick={() => chooseGarage(item.id)} className={`flex w-full items-start gap-3 p-4 text-left hover:bg-stone-50 ${item.id === garageId ? "bg-orange-50" : ""}`}>
                     <span className="grid size-10 shrink-0 place-items-center rounded-md bg-stone-900 text-white"><Wrench size={18} /></span>
@@ -145,7 +166,7 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
                     </span>
                   </button>
                 </li>
-              ))}
+              </Fragment>))}
             </ul>
           </div>
         </div>

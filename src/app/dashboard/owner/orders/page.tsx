@@ -47,7 +47,7 @@ export default async function OwnerOrdersPage({
       .eq("is_active", true),
     dataClient
       .from("profiles")
-      .select("id, full_name, document_id")
+      .select("id, full_name, document_id, phone")
       .eq("role", "client")
       .order("full_name"),
     dataClient.from("vehicle_brands").select("id, name").eq("is_active", true),
@@ -73,6 +73,7 @@ export default async function OwnerOrdersPage({
     id: client.id,
     name: client.full_name,
     documentId: client.document_id,
+    phone: client.phone,
   }));
   const vehicleOptions = (vehicles ?? []).map((vehicle) => {
     const openStatus = openOrders.get(vehicle.id);
@@ -135,6 +136,7 @@ export default async function OwnerOrdersPage({
           </p>
         </div>
         <OrderCreateFlowModal
+          garage={{ name: garage.name, slug: garage.slug }}
           clients={clientOptions}
           vehicles={vehicleOptions}
           brands={brandOptions}
@@ -251,7 +253,7 @@ function MissingGarage({ email }: { email?: string }) {
     <div className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="font-display text-3xl font-bold">Taller no asignado</h1>
       <p className="mt-2 text-stone-600">
-        La cuenta {email ?? "actual"} no está configurada como owner de un
+        La cuenta {email ?? "actual"} no está configurada como administrador de un
         taller.
       </p>
     </div>

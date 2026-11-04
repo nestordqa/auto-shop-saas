@@ -57,7 +57,7 @@ export function GarageLinkShare({ name, slug, ownerPhone, variant = "compact", c
         <button type="button" onClick={copy} aria-label={`Copiar enlace de ${name}`} title={url} className={`grid size-10 place-items-center rounded-md transition ${copied ? "bg-emerald-50 text-emerald-700" : "text-stone-500 hover:bg-stone-100 hover:text-stone-900"}`}>
           {copied ? <Check size={18} /> : <Copy size={18} />}
         </button>
-        <a href={whatsappUrl} target="_blank" rel="noreferrer" aria-label={`Enviar enlace de ${name} por WhatsApp`} title={phone ? `Enviar al owner (${ownerPhone})` : "Elegir contacto en WhatsApp"} className="grid size-10 place-items-center rounded-md text-stone-500 transition hover:bg-emerald-50 hover:text-emerald-700">
+        <a href={whatsappUrl} target="_blank" rel="noreferrer" aria-label={`Enviar enlace de ${name} por WhatsApp`} title={phone ? `Enviar al administrador (${ownerPhone})` : "Elegir contacto en WhatsApp"} className="grid size-10 place-items-center rounded-md text-stone-500 transition hover:bg-emerald-50 hover:text-emerald-700">
           <MessageCircle size={18} />
         </a>
       </div>
@@ -74,7 +74,7 @@ export function GarageLinkShare({ name, slug, ownerPhone, variant = "compact", c
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         <a href={whatsappUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#1f9d55] px-4 font-bold text-white hover:bg-[#178247]">
-          <MessageCircle size={18} /> {phone ? "Enviar al owner por WhatsApp" : "Enviar por WhatsApp"}
+          <MessageCircle size={18} /> {phone ? "Enviar al administrador por WhatsApp" : "Enviar por WhatsApp"}
         </a>
         <a href={url} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-md border border-stone-300 px-4 font-bold">
           <ExternalLink size={18} /> Abrir página del taller

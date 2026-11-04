@@ -40,7 +40,7 @@ export function RequirementsShareModal() {
             </div>
             <div className="grid gap-3 p-5">
               <div className="grid gap-3 sm:grid-cols-2">
-                <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Nombre del owner (opcional)" className="min-h-12 rounded-md border border-stone-300 px-4" />
+                <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Nombre del administrador (opcional)" className="min-h-12 rounded-md border border-stone-300 px-4" />
                 <input value={phone} onChange={(event) => setPhone(event.target.value)} type="tel" placeholder="Teléfono (opcional)" className="min-h-12 rounded-md border border-stone-300 px-4" />
               </div>
               <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-md border border-stone-200 bg-stone-50 p-4 font-sans text-sm text-stone-700">{message}</pre>

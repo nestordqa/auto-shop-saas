@@ -61,7 +61,7 @@ export function ContractCreateModal({ garages, today, preselectedGarageId, label
                   {garages.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.ownerName}</option>)}
                 </select>
               </label>
-              {garage && <p className="-mt-2 text-sm text-stone-600">El contrato se emite a nombre del owner <strong>{garage.ownerName}</strong>.</p>}
+              {garage && <p className="-mt-2 text-sm text-stone-600">El contrato se emite a nombre del administrador <strong>{garage.ownerName}</strong>.</p>}
               <fieldset className="grid gap-2 sm:grid-cols-2">
                 <legend className="mb-1 text-sm font-bold">Tipo de contrato</legend>
                 {(["trial", "paid"] as const).map((value) => (

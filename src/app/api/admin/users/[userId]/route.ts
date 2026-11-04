@@ -35,7 +35,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     admin.from("vehicles").select("id").eq("user_id", userId),
     admin.from("diagnostics").select("id", { count: "exact", head: true }).eq("created_by", userId),
   ]);
-  if (garage) return NextResponse.json({ error: `Es el owner de ${garage.name}. Elimina el taller primero o desactiva al usuario.` }, { status: 409 });
+  if (garage) return NextResponse.json({ error: `Es el administrador de ${garage.name}. Elimina el taller primero o desactiva al usuario.` }, { status: 409 });
   if (diagnostics) return NextResponse.json({ error: "Ha registrado diagnósticos en órdenes. Desactívalo para conservar el historial." }, { status: 409 });
   const vehicleIds = (vehicles ?? []).map((vehicle) => vehicle.id);
   if (vehicleIds.length) {

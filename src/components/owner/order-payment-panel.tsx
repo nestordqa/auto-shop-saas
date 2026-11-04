@@ -56,7 +56,7 @@ export function OrderPaymentPanel({ orderId, payment, canResolve }: { orderId: s
           {canResolve && payment.status === "pay_at_garage" && (
             <button type="button" disabled={Boolean(pending)} onClick={() => act("receive")} className="flex min-h-12 items-center justify-center gap-2 justify-self-start rounded-md bg-emerald-600 px-5 font-bold text-white disabled:opacity-60">{pending === "receive" ? <LoaderCircle className="animate-spin" size={19} /> : <HandCoins size={19} />} Pago recibido</button>
           )}
-          {!canResolve && (payment.status === "reported" || payment.status === "pay_at_garage") && <p className="text-xs text-stone-500">Solo el owner del taller puede confirmar el pago.</p>}
+          {!canResolve && (payment.status === "reported" || payment.status === "pay_at_garage") && <p className="text-xs text-stone-500">Solo el administrador del taller puede confirmar el pago.</p>}
         </div>
       )}
       {error && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{error}</p>}

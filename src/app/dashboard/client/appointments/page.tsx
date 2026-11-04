@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Mis citas" };
 
 export default async function ClientAppointmentsPage() {
   const user = await requireRole(["client"]);
-  const { orders, vehicles, garages, defaultGarageId } = await loadClientPortal(user.id);
+  const { orders, vehicles, garages, defaultGarageId, frequentGarageIds } = await loadClientPortal(user.id);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
@@ -22,7 +22,7 @@ export default async function ClientAppointmentsPage() {
         <SectionHeading title="Nueva cita" />
         <p className="mt-2 text-stone-600">Elige un horario disponible entre 08:00 y 18:00.</p>
         {vehicles.length ? (
-          <AppointmentBooking garages={garages} vehicles={vehicles} defaultGarageId={defaultGarageId} />
+          <AppointmentBooking garages={garages} vehicles={vehicles} defaultGarageId={defaultGarageId} frequentGarageIds={frequentGarageIds} />
         ) : (
           <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-900">Registra un vehículo para habilitar la agenda.</p>
         )}

@@ -9,7 +9,7 @@ import { contractCode, contractTitle, CYCLE_DESCRIPTIONS, CYCLE_LABELS, formatDa
 
 export type ContractPdfInput = {
   contract: Contract;
-  garage: { name: string; address: string };
+  garage: { name: string; address: string; legalName?: string | null; legalId?: string | null };
   /** Active branches, main first; listed when there is more than one. */
   branches?: { name: string; address: string }[];
   owner: { fullName: string; documentId: string | null; phone: string | null; email: string | null };
@@ -72,7 +72,8 @@ export async function buildContractPdf({ contract, garage, owner, branches = [],
     branches.forEach((branch) => paragraph(`•  ${branch.name}: ${branch.address}.`, { gap: 2 }));
     y -= 4;
   } else paragraph(`Taller: ${garage.name}, ubicado en ${garage.address}.`);
-  paragraph(`Representante: ${owner.fullName}${owner.documentId ? `, documento ${owner.documentId}` : ""}${owner.email ? `, ${owner.email}` : ""}${owner.phone ? `, teléfono ${owner.phone}` : ""}.`, { gap: 14 });
+  if (garage.legalName) paragraph(`Empresa titular: ${garage.legalName}${garage.legalId ? `, RIF ${garage.legalId}` : ""}.`);
+  paragraph(`${garage.legalName ? "Representante (administrador de la cuenta)" : "Representante"}: ${owner.fullName}${owner.documentId ? `, documento ${owner.documentId}` : ""}${owner.email ? `, ${owner.email}` : ""}${owner.phone ? `, teléfono ${owner.phone}` : ""}.`, { gap: 14 });
 
   paragraph("CLÁUSULAS", { font: bold, size: 11, gap: 4 });
   clauses(contract).forEach(([title, body], index) => {
@@ -136,7 +137,7 @@ function clauses(contract: Contract): [string, string][] {
     ["Sucursales", `La sucursal principal está incluida. Cada sucursal adicional activa suma ${EXTRA_BRANCH_FEE} USD al mes, que se cobran junto con cada período (en los ciclos semanal y quincenal, la parte proporcional).`],
     ["Ciclo de cobro", `El cobro se liquida ${CYCLE_DESCRIPTIONS[cycle]}, contados desde el ${start}. El pago vence el día de cierre de cada período.`],
     ["Vigencia", `Este contrato rige desde el ${start}${contract.end_date ? ` hasta el ${formatDate(contract.end_date)}` : " por tiempo indefinido"}. Cualquiera de las partes puede terminarlo avisando por escrito con 15 días de anticipación; los períodos ya cerrados deben pagarse. El Taller puede solicitar un cambio de plan, que aplicará desde un nuevo contrato.`],
-    ["Falta de pago", `Durante la mora TorkeOS enviará avisos de pago pendiente. Si pasan ${LOCK_AFTER_DAYS} días sin pagar un período vencido, se suspenderá el acceso del Taller (dueño, encargados y mecánicos) hasta regularizar el pago, sin que pierda sus datos; sus clientes conservan su acceso.`],
+    ["Falta de pago", `Durante la mora TorkeOS enviará avisos de pago pendiente. Si pasan ${LOCK_AFTER_DAYS} días sin pagar un período vencido, se suspenderá el acceso del Taller (administrador, encargados y mecánicos) hasta regularizar el pago, sin que pierda sus datos; sus clientes conservan su acceso.`],
     data,
   ];
 }

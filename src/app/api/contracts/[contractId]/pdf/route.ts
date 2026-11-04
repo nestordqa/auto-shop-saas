@@ -19,7 +19,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!contract || (user.app_metadata.role !== "admin" && contract.owner_id !== user.id)) return NextResponse.json({ error: "Contrato no encontrado." }, { status: 404 });
 
   const [{ data: garage }, { data: profile }, { data: ownerAuth }, { data: branches }] = await Promise.all([
-    admin.from("garages").select("name, address").eq("id", contract.garage_id).single(),
+    admin.from("garages").select("name, address, legal_name, legal_id").eq("id", contract.garage_id).single(),
     admin.from("profiles").select("full_name, document_id, phone").eq("id", contract.owner_id).single(),
     admin.auth.admin.getUserById(contract.owner_id),
     admin.from("garage_branches").select("name, address").eq("garage_id", contract.garage_id).eq("is_active", true).order("is_main", { ascending: false }).order("name"),
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ? { name: contract.provider_signer_name ?? "TorkeOS", position: contract.provider_signer_position ?? "", image: contract.provider_signature }
       : fallback ? { name: fallback.fullName, position: fallback.position, image: fallback.image } : null,
     ownerSignature: contract.owner_signature && contract.signed_at ? { image: contract.owner_signature, name: contract.owner_signed_name ?? profile.full_name, signedAt: contract.signed_at } : null,
-    garage,
+    garage: { name: garage.name, address: garage.address, legalName: garage.legal_name, legalId: garage.legal_id },
     branches: branches ?? [],
     owner: { fullName: profile.full_name, documentId: profile.document_id, phone: profile.phone, email: ownerAuth.user?.email ?? null },
   });

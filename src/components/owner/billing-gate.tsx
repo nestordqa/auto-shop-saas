@@ -33,7 +33,7 @@ export async function BillingGate({ garage, role, children }: { garage: { id: st
         <section className="rounded-lg border border-red-200 bg-white p-6 shadow-sm">
           <p className="flex items-center gap-2 text-xs font-bold uppercase text-red-700"><Lock size={15} /> Acceso suspendido</p>
           <h1 className="mt-2 font-display text-3xl font-bold">La prueba gratis de {garage.name} terminó</h1>
-          <p className="mt-2 text-sm text-stone-600">{isOwner ? `Pasaron más de ${LOCK_AFTER_DAYS} días sin elegir un plan, así que el acceso de tu equipo quedó suspendido. Tus datos están a salvo y tus clientes siguen viendo sus órdenes. Elige tu plan para reactivarlo al instante.` : "El dueño del taller debe elegir un plan para reactivar el acceso."}</p>
+          <p className="mt-2 text-sm text-stone-600">{isOwner ? `Pasaron más de ${LOCK_AFTER_DAYS} días sin elegir un plan, así que el acceso de tu equipo quedó suspendido. Tus datos están a salvo y tus clientes siguen viendo sus órdenes. Elige tu plan para reactivarlo al instante.` : "El administrador del taller debe elegir un plan para reactivar el acceso."}</p>
         </section>
         {isOwner && <PlanChooserModal garageName={garage.name} suggested={(garage.plan ?? "bujia") as PlanKey} extraBranchFee={EXTRA_BRANCH_FEE} />}
       </div>
@@ -48,7 +48,7 @@ export async function BillingGate({ garage, role, children }: { garage: { id: st
           <h1 className="mt-2 font-display text-3xl font-bold">{garage.name} tiene pagos vencidos</h1>
           {isOwner
             ? <p className="mt-2 text-sm text-stone-600">Pasaron más de {LOCK_AFTER_DAYS} días sin pagar tu plan, así que el acceso de tu equipo quedó suspendido. Tus datos están a salvo y tus clientes siguen viendo sus órdenes. Reporta tu pago de <strong>{money.format(status.owed)}</strong> y lo reactivamos apenas lo verifiquemos.</p>
-            : <p className="mt-2 text-sm text-stone-600">El acceso del taller está suspendido por falta de pago. El dueño del taller debe ponerse al día para reactivarlo.</p>}
+            : <p className="mt-2 text-sm text-stone-600">El acceso del taller está suspendido por falta de pago. El administrador del taller debe ponerse al día para reactivarlo.</p>}
           {isOwner && <div className="mt-5"><PlatformPaymentPanel periods={duePeriodViews(status)} methods={methods} lockAfterDays={LOCK_AFTER_DAYS} /></div>}
         </section>
       </div>

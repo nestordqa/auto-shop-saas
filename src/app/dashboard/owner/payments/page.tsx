@@ -4,7 +4,7 @@ import { getPaymentMethods } from "@/lib/payments-data";
 
 export default async function OwnerPaymentsPage() {
   const { user, garage, dataClient } = await requireOwnerGarage({ ownerOnly: true });
-  if (!garage) return <div className="mx-auto max-w-3xl px-4 py-12"><h1 className="font-display text-3xl font-bold">Taller no asignado</h1><p className="mt-2 text-stone-600">La cuenta {user.email} no coincide con el owner configurado para un taller.</p></div>;
+  if (!garage) return <div className="mx-auto max-w-3xl px-4 py-12"><h1 className="font-display text-3xl font-bold">Taller no asignado</h1><p className="mt-2 text-stone-600">La cuenta {user.email} no coincide con el administrador configurado para un taller.</p></div>;
   const methods = await getPaymentMethods(dataClient, garage.id);
 
   return <div className="mx-auto w-full max-w-5xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">

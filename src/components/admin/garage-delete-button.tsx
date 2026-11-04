@@ -57,7 +57,7 @@ export function GarageDeleteButton({ garage, totals }: GarageDeleteButtonProps) 
                 <li>• {totals.orders} {totals.orders === 1 ? "orden" : "órdenes"}{totals.openOrders ? ` (${totals.openOrders} abiertas)` : ""}, con sus diagnósticos, presupuestos, formatos de ingreso y fotos.</li>
                 <li>• {totals.staff} {totals.staff === 1 ? "cuenta" : "cuentas"} de mecánicos y encargados.</li>
               </ul>
-              <p className="text-stone-600">Se conservan la cuenta del dueño (podrás asignarle otro taller) y los clientes con sus vehículos. La facturación de este taller deja de estar disponible.</p>
+              <p className="text-stone-600">Se conservan la cuenta del administrador (podrás asignarle otro taller) y los clientes con sus vehículos. La facturación de este taller deja de estar disponible.</p>
               <label className="grid gap-1.5 font-bold">
                 Escribe <span className="rounded bg-stone-100 px-1.5 py-0.5 font-mono">{garage.name}</span> para confirmar
                 <input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" className="min-h-12 rounded-md border border-stone-300 px-4 font-normal outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20" />

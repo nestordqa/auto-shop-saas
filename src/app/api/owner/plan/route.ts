@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   if (!auth.ok) return auth.response;
   const status = await getGarageBillingStatus(auth.staff.garageId);
   if (!status.trialExpired) return NextResponse.json({ error: "Tu taller ya tiene un plan vigente. Para cambiarlo, escríbenos a soporte." }, { status: 409 });
-  const result = await createContract(auth.admin, { kind: "paid", garageId: auth.staff.garageId, startDate: todayDate(), plan: parsed.data.plan, billingCycle: parsed.data.billingCycle, notes: "Plan elegido por el owner al terminar la prueba.", createdBy: auth.user.id });
+  const result = await createContract(auth.admin, { kind: "paid", garageId: auth.staff.garageId, startDate: todayDate(), plan: parsed.data.plan, billingCycle: parsed.data.billingCycle, notes: "Plan elegido por el administrador al terminar la prueba.", createdBy: auth.user.id });
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   notifyPlanChosen(auth.staff.garageId, result.id, PLANS[parsed.data.plan].name);
   return NextResponse.json({ success: true }, { status: 201 });

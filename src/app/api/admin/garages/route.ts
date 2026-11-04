@@ -22,6 +22,8 @@ const garageSchema = z.discriminatedUnion("ownerMode", [
     /** "trial" = free first month (default); a plan key = paid from today. */
     start: z.enum(["trial", ...PLAN_KEYS]).default("trial"),
     prospectId: z.union([z.literal(""), z.uuid()]).optional(),
+    legalName: z.string().trim().max(160).optional(),
+    legalId: z.string().trim().max(30).optional(),
   }),
   z.object({
     ownerMode: z.literal("new"),
@@ -37,12 +39,14 @@ const garageSchema = z.discriminatedUnion("ownerMode", [
     /** "trial" = free first month (default); a plan key = paid from today. */
     start: z.enum(["trial", ...PLAN_KEYS]).default("trial"),
     prospectId: z.union([z.literal(""), z.uuid()]).optional(),
+    legalName: z.string().trim().max(160).optional(),
+    legalId: z.string().trim().max(30).optional(),
   }),
 ]);
 
 export async function POST(request: Request) {
   const parsed = garageSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Revisa los datos del taller y owner." }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "Revisa los datos del taller y administrador." }, { status: 400 });
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -64,7 +68,7 @@ export async function POST(request: Request) {
       user_metadata: { full_name: input.ownerName, phone: input.ownerPhone },
     });
     if (error || !data.user) {
-      return NextResponse.json({ error: error?.message ?? "No se pudo crear el owner." }, { status: 400 });
+      return NextResponse.json({ error: error?.message ?? "No se pudo crear el administrador." }, { status: 400 });
     }
     ownerId = data.user.id;
     createdAuthUser = true;
@@ -76,7 +80,7 @@ export async function POST(request: Request) {
     }).eq("id", ownerId).select("id").single();
     if (profileError) {
       await admin.auth.admin.deleteUser(ownerId);
-      return NextResponse.json({ error: "No se pudo sincronizar el perfil del owner." }, { status: 500 });
+      return NextResponse.json({ error: "No se pudo sincronizar el perfil del administrador." }, { status: 500 });
     }
   } else {
     const { data: owner } = await supabase
@@ -85,7 +89,7 @@ export async function POST(request: Request) {
       .eq("id", ownerId)
       .eq("role", "garage_owner")
       .maybeSingle();
-    if (!owner) return NextResponse.json({ error: "El owner no existe o ya no está disponible." }, { status: 400 });
+    if (!owner) return NextResponse.json({ error: "El administrador no existe o ya no está disponible." }, { status: 400 });
   }
 
   const specialties = await validSpecialtyKeys(admin, input.specialties);
@@ -100,6 +104,8 @@ export async function POST(request: Request) {
     slug,
     address: input.address,
     map_location: input.mapLocation || null,
+    legal_name: input.legalName || null,
+    legal_id: input.legalId?.toUpperCase() || null,
     specialty: specialtySummary(specialties.keys, specialties.options),
     specialties: specialties.keys.length ? specialties.keys : ["general"],
     plan: input.start === "trial" ? null : input.start,
@@ -108,7 +114,7 @@ export async function POST(request: Request) {
 
   if (garageError) {
     if (createdAuthUser) await admin.auth.admin.deleteUser(ownerId);
-    return NextResponse.json({ error: garageError.code === "23505" ? "Ese owner ya tiene un taller." : "No se pudo crear el taller." }, { status: 409 });
+    return NextResponse.json({ error: garageError.code === "23505" ? "Ese administrador ya tiene un taller." : "No se pudo crear el taller." }, { status: 409 });
   }
 
   // Created from a prospect: close it as won and link it to the new garage.

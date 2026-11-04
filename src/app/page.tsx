@@ -89,7 +89,7 @@ const ownerSteps: Step[] = [
   {
     icon: Store,
     title: "Alta de tu taller",
-    body: "Creamos tu taller, te asignamos como dueño y activamos tu página pública de reservas con tu propio enlace.",
+    body: "Creamos tu taller, te asignamos como administrador y activamos tu página pública de reservas con tu propio enlace.",
   },
   {
     icon: Users,
@@ -440,7 +440,7 @@ export default async function HomePage() {
               <p data-reveal="up" style={delay(2)} className="mt-6 text-lg leading-8 text-stone-300">
                 TorkeOS nace para resolver lo que más le cuesta a un taller mecánico: ordenar el trabajo y ganarse la confianza
                 del cliente. Digitalizamos todo el ciclo de servicio, desde la cita hasta la entrega, y conectamos en una sola
-                plataforma al dueño del taller, a sus mecánicos y a cada persona que confía su vehículo.
+                plataforma al administrador del taller, a sus mecánicos y a cada persona que confía su vehículo.
               </p>
               <p data-reveal="up" style={delay(3)} className="mt-4 text-lg leading-8 text-stone-300">
                 Nuestro objetivo es simple: que el taller trabaje con orden y que el cliente sepa en todo momento qué se le hace a
@@ -486,7 +486,7 @@ export default async function HomePage() {
               >
                 <p className="text-xs font-bold uppercase text-[#ff765f]">Un sistema, tres miradas</p>
                 <ul className="mt-3 grid gap-2 text-sm text-stone-200">
-                  <li className="flex gap-2"><Check size={18} className="shrink-0 text-[#ef3f26]" /> El dueño controla el negocio</li>
+                  <li className="flex gap-2"><Check size={18} className="shrink-0 text-[#ef3f26]" /> El administrador controla el negocio</li>
                   <li className="flex gap-2"><Check size={18} className="shrink-0 text-[#ef3f26]" /> El mecánico diagnostica</li>
                   <li className="flex gap-2"><Check size={18} className="shrink-0 text-[#ef3f26]" /> El cliente aprueba y sigue todo</li>
                 </ul>
@@ -518,7 +518,7 @@ export default async function HomePage() {
                 Así trabaja tu taller con TorkeOS.
               </h2>
               <p data-reveal="up" style={delay(2)} className="mt-5 text-lg leading-8 text-stone-300">
-                Desde el día uno hasta el cierre de cada orden: lo que haces como dueño en cada etapa.
+                Desde el día uno hasta el cierre de cada orden: lo que haces como administrador en cada etapa.
               </p>
               <div data-reveal="curtain" style={delay(3)} className="relative mt-8 hidden aspect-[3/2] overflow-hidden rounded-lg lg:block">
                 <Image
@@ -619,7 +619,7 @@ export default async function HomePage() {
                   <div className="flex items-center gap-3">
                     <span className="grid size-12 place-items-center rounded-md bg-[#ef3f26]"><Wrench size={24} aria-hidden /></span>
                     <div>
-                      <h3 className="font-display text-3xl font-bold">Dueños de taller</h3>
+                      <h3 className="font-display text-3xl font-bold">Administradores de talleres</h3>
                       <p className="text-sm text-stone-400">Elige el plan que va con tu taller</p>
                     </div>
                   </div>

@@ -17,7 +17,7 @@ export function PaymentReportList({ reports }: { reports: PaymentReportView[] })
   async function act(report: PaymentReportView, action: "confirm" | "reject") {
     let note: string | null = null;
     if (action === "reject") {
-      note = window.prompt("¿Por qué no se pudo verificar? (el owner lo verá)", "No encontramos el pago en nuestra cuenta");
+      note = window.prompt("¿Por qué no se pudo verificar? (el administrador lo verá)", "No encontramos el pago en nuestra cuenta");
       if (note === null) return;
     } else if (!window.confirm(`¿Confirmas que recibiste ${report.amount}?`)) return;
     setPending(report.id);

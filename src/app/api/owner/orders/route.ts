@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { placeholderEmail, placeholderPassword } from "@/lib/client-accounts";
 import { phoneSchema } from "@/lib/phone";
 import { authorizeStaffRequest, resolveStaffBranch } from "@/lib/auth/garage-staff";
 import { notifyAppointmentCreated, notifyMechanicAssigned } from "@/lib/notifications";
@@ -11,10 +12,11 @@ const clientSchema = z.discriminatedUnion("mode", [
   z.object({
     mode: z.literal("new"),
     fullName: z.string().trim().min(2).max(120),
-    email: z.email(),
+    /** Without email the client gets no app access: the garage informs them by WhatsApp and can give access later. */
+    email: z.union([z.literal(""), z.email()]).optional(),
     phone: phoneSchema,
-    documentId: z.string().trim().min(4).max(30),
-    temporaryPassword: z.string().min(8).max(72),
+    documentId: z.union([z.literal(""), z.string().trim().min(4).max(30)]).optional(),
+    temporaryPassword: z.union([z.literal(""), z.string().min(8).max(72)]).optional(),
   }),
 ]);
 
@@ -42,9 +44,33 @@ const orderSchema = z.object({
   timezoneOffset: z.number().int().min(-840).max(840),
 });
 
+const FIELD_ERRORS: Record<string, string> = {
+  "client.fullName": "Escribe el nombre completo del cliente.",
+  "client.email": "El correo del cliente no es válido.",
+  "client.phone": "El teléfono del cliente no es válido. Ejemplo: 0412 123 4567.",
+  "client.documentId": "La cédula o RIF debe tener entre 4 y 30 caracteres.",
+  "client.temporaryPassword": "La contraseña temporal debe tener entre 8 y 72 caracteres.",
+  "vehicle.brandId": "Elige la marca del vehículo.",
+  "vehicle.model": "Elige o escribe el modelo del vehículo.",
+  "vehicle.color": "Escribe el color del vehículo.",
+  "vehicle.plate": "La placa debe tener entre 3 y 20 caracteres.",
+  "mechanicId": "El mecánico seleccionado no es válido.",
+  appointmentDate: "Elige la fecha de la cita.",
+  appointmentTime: "Elige la hora de la cita.",
+};
+
+function validationMessage(path: PropertyKey[]) {
+  const keys = path.map(String);
+  for (let length = keys.length; length > 0; length--) {
+    const message = FIELD_ERRORS[keys.slice(0, length).join(".")];
+    if (message) return message;
+  }
+  return "Revisa los datos del cliente, el vehículo y la cita.";
+}
+
 export async function POST(request: Request) {
   const parsed = orderSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Revisa el vehículo y la fecha de la cita." }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: validationMessage(parsed.error.issues[0]?.path ?? []) }, { status: 400 });
 
   const auth = await authorizeStaffRequest({ unavailable: "La creación de órdenes no está configurada." });
   if (!auth.ok) return auth.response;
@@ -66,20 +92,26 @@ export async function POST(request: Request) {
     const { data: clientProfile } = await admin.from("profiles").select("id").eq("id", clientId).eq("role", "client").maybeSingle();
     if (!clientProfile) return NextResponse.json({ error: "El cliente seleccionado no existe." }, { status: 404 });
   } else {
+    const withAccess = Boolean(input.client.email);
+    if (withAccess && !input.client.temporaryPassword) return NextResponse.json({ error: FIELD_ERRORS["client.temporaryPassword"] }, { status: 400 });
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
-      email: input.client.email,
-      password: input.client.temporaryPassword,
+      email: withAccess ? input.client.email! : placeholderEmail(),
+      password: withAccess ? input.client.temporaryPassword! : placeholderPassword(),
       email_confirm: true,
       app_metadata: { role: "client" },
       user_metadata: { full_name: input.client.fullName, phone: input.client.phone },
     });
-    if (authError || !authData.user) return NextResponse.json({ error: authError?.message ?? "No se pudo crear el cliente." }, { status: 400 });
+    if (authError || !authData.user) {
+      const exists = authError?.code === "email_exists" || /already|registered/i.test(authError?.message ?? "");
+      return NextResponse.json({ error: exists ? "Ya existe una cuenta con ese correo. Búscala en «Buscar cliente» o usa otro correo." : "No se pudo crear el cliente. Revisa sus datos." }, { status: exists ? 409 : 400 });
+    }
     clientId = authData.user.id;
     createdClient = true;
-    const { error: profileError } = await admin.from("profiles").update({ full_name: input.client.fullName, phone: input.client.phone, document_id: input.client.documentId, role: "client" }).eq("id", clientId).select("id").single();
+    const { error: profileError } = await admin.from("profiles").update({ full_name: input.client.fullName, phone: input.client.phone, document_id: input.client.documentId || null, role: "client" }).eq("id", clientId).select("id").single();
     if (profileError) {
       await admin.auth.admin.deleteUser(clientId);
-      return NextResponse.json({ error: "No se pudo sincronizar el perfil del cliente." }, { status: 500 });
+      if (profileError.code === "23505") return NextResponse.json({ error: "Ya existe un cliente con esa cédula o teléfono. Búscalo en «Buscar cliente»." }, { status: 409 });
+      return NextResponse.json({ error: "No se pudo guardar el perfil del cliente." }, { status: 500 });
     }
   }
 

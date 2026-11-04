@@ -119,7 +119,7 @@ export function MechanicDiagnosticForm({ orderId, initialStatus, initialDiagnost
           </div>
           <span className="shrink-0 rounded-md bg-stone-900 px-3 py-2 text-sm font-bold text-white">{diagnostics.length}</span>
         </div>
-        <p className="mt-2 text-sm leading-6 text-stone-600">Registra cada hallazgo por separado. Los precios los define el dueño del taller.</p>
+        <p className="mt-2 text-sm leading-6 text-stone-600">Registra cada hallazgo por separado. Los precios los define el administrador del taller.</p>
       </div>
 
       <div className="divide-y divide-stone-100">

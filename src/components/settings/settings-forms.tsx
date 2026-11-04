@@ -100,7 +100,7 @@ export function PasswordForm() {
 export function GarageForm({ values, specialtyOptions }: { values: GarageValues; specialtyOptions: SpecialtyOption[] }) {
   const { pending, saved, error, submit } = useSave("/api/owner/garage", "PATCH");
   return (
-    <Card icon={<Building2 size={20} />} title="Datos del taller" description="Lo que ven tus clientes al reservar. Solo el owner puede editarlos.">
+    <Card icon={<Building2 size={20} />} title="Datos del taller" description="Lo que ven tus clientes al reservar. Solo el administrador puede editarlos.">
       <form onSubmit={(event) => submit(event)} className="grid gap-4 p-5 sm:grid-cols-2">
         <label className="grid gap-1 text-sm font-bold sm:col-span-2">Nombre comercial<input name="name" required minLength={2} defaultValue={values.name} className={input} /></label>
         <div className="sm:col-span-2"><SpecialtyPicker options={specialtyOptions} defaultValue={values.specialties} /></div>

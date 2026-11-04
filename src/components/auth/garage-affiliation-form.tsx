@@ -32,11 +32,13 @@ export function GarageAffiliationForm() {
       ...optional("Teléfono del taller", "garagePhone"),
       ...optional("Instagram", "instagram"),
       `Sucursales: ${value("branches")}`,
+      ...optional("Razón social", "legalName"),
+      ...optional("RIF de la empresa", "legalId"),
       `Plan de interés: ${PLANS[value("plan") as PlanKey]?.name ?? "Por definir"}`,
       "",
-      "*Datos del dueño*",
+      "*Datos del administrador*",
       `Nombre completo: ${value("ownerName")}`,
-      `Cédula / RIF: ${value("ownerDocument")}`,
+      `Cédula: ${value("ownerDocument")}`,
       `Correo: ${value("ownerEmail")}`,
       `Teléfono: ${value("ownerPhone")}`,
       ...(value("notes") ? ["", "*Observaciones*", value("notes")] : []),
@@ -66,10 +68,19 @@ export function GarageAffiliationForm() {
         </div>
       </fieldset>
       <fieldset className="grid gap-3">
-        <legend className="mb-2 text-sm font-bold">Datos del dueño</legend>
+        <legend className="mb-2 text-sm font-bold">Empresa (opcional)</legend>
+        <p className="text-xs text-stone-500">Complétalo solo si el taller pertenece a una empresa.</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input name="legalName" maxLength={160} placeholder="Razón social" className={input} />
+          <input name="legalId" maxLength={30} placeholder="RIF (J-12345678-9)" className={`${input} uppercase`} />
+        </div>
+      </fieldset>
+      <fieldset className="grid gap-3">
+        <legend className="mb-2 text-sm font-bold">Datos del administrador</legend>
+        <p className="text-xs text-stone-500">La persona que manejará la cuenta de TorkeOS.</p>
         <input name="ownerName" required minLength={2} maxLength={120} placeholder="Nombre completo" autoComplete="name" className={input} />
         <div className="grid gap-3 sm:grid-cols-2">
-          <input name="ownerDocument" required minLength={4} maxLength={30} placeholder="Cédula / RIF" className={input} />
+          <input name="ownerDocument" required minLength={4} maxLength={30} placeholder="Cédula" className={input} />
           <input name="ownerPhone" required type="tel" maxLength={30} placeholder="Teléfono" autoComplete="tel" className={input} />
         </div>
         <input name="ownerEmail" required type="email" maxLength={200} placeholder="Correo (será tu usuario)" autoComplete="email" className={input} />

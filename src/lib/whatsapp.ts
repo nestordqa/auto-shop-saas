@@ -9,6 +9,8 @@ type WhatsAppStatusMessage = {
   vehicleLabel: string;
   orderReference: string;
   status: OrderStatus;
+  /** Signed link to the intake PDF, added to the "ingresado" message. */
+  intakeUrl?: string;
   budget?: {
     diagnostics: { description: string; detail?: string; price: number }[];
     includesParts: boolean;
@@ -22,7 +24,7 @@ const statusCopy: Record<OrderStatus, string> = {
   por_ingresar: "Tu cita está agendada. Te esperamos en la fecha acordada.",
   ingresado: "Tu vehículo fue recibido y ya se encuentra en el taller.",
   diagnosticado: "Finalizamos el diagnóstico. Revisa el presupuesto para continuar.",
-  presupuestado: "Tu presupuesto está listo. Revisa el detalle para aprobarlo o rechazarlo.",
+  presupuestado: "Tu presupuesto está listo. Revisa el detalle y respóndenos por aquí para aprobarlo o rechazarlo.",
   en_reparacion: "Tu presupuesto fue aprobado y comenzamos la reparación.",
   en_prueba: "Estamos probando tu vehículo para confirmar que la reparación quedó bien.",
   presupuesto_rechazado: "Registramos el rechazo del presupuesto. Contáctanos para coordinar los próximos pasos.",
@@ -41,6 +43,7 @@ export function buildWhatsAppStatusMessage({
   vehicleLabel,
   orderReference,
   status,
+  intakeUrl,
   budget,
 }: Omit<WhatsAppStatusMessage, "phone">, template = MESSAGE_TEMPLATES.order_status.body) {
   const budgetText = budget ? [
@@ -49,7 +52,9 @@ export function buildWhatsAppStatusMessage({
     `Repuestos incluidos: ${budget.includesParts ? "Sí" : "No"}`,
     `Total: ${currency.format(budget.totalAmount)}`,
   ].join("\n") : "";
-  return renderTemplate(template, { cliente: customerName, taller: garageName, vehiculo: vehicleLabel, orden: orderReference, estado: ORDER_STATUS_LABELS[status], mensaje_estado: statusCopy[status], presupuesto: budgetText });
+  return renderTemplate(template, { cliente: customerName, taller: garageName, vehiculo: vehicleLabel, orden: orderReference, estado: ORDER_STATUS_LABELS[status], mensaje_estado: intakeUrl ? `${statusCopy[status]}
+
+Formato de ingreso (fotos, kilometraje y estado del vehículo): ${intakeUrl}` : statusCopy[status], presupuesto: budgetText });
 }
 
 export function buildWhatsAppStatusUrl(input: WhatsAppStatusMessage, template?: string) {

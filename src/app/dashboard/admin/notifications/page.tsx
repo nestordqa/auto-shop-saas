@@ -5,7 +5,7 @@ import { isPushConfigured } from "@/lib/push";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AppRole } from "@/types/domain";
 
-const roleLabels: Record<AppRole, string> = { admin: "Admin", garage_owner: "Owner", garage_manager: "Encargado", mechanic: "Mecánico", client: "Cliente" };
+const roleLabels: Record<AppRole, string> = { admin: "Admin", garage_owner: "Admin. de taller", garage_manager: "Encargado", mechanic: "Mecánico", client: "Cliente" };
 
 export default async function NotificationsPage() {
   await requireRole(["admin"]);
@@ -28,7 +28,7 @@ export default async function NotificationsPage() {
   const users = all.map((profile) => ({ id: profile.id, name: profile.full_name as string, email: emailById.get(profile.id) ?? null, roleLabel: roleLabels[profile.role as AppRole], hasPush: withPush.has(profile.id) }));
 
   return <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
-    <header><p className="text-xs font-bold uppercase text-[#d9341d]">Administración</p><h1 className="mt-2 font-display text-3xl font-bold sm:text-4xl">Notificaciones</h1><p className="mt-1 text-sm text-stone-600">Envía avisos push masivos a owners, admins, clientes o usuarios concretos.</p></header>
+    <header><p className="text-xs font-bold uppercase text-[#d9341d]">Administración</p><h1 className="mt-2 font-display text-3xl font-bold sm:text-4xl">Notificaciones</h1><p className="mt-1 text-sm text-stone-600">Envía avisos push masivos a administradores, admins, clientes o usuarios concretos.</p></header>
     {!isPushConfigured() && <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">Configura NEXT_PUBLIC_VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY para enviar notificaciones.</p>}
     <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
       <BroadcastForm users={users} stats={{ owners: stat(["garage_owner"]), admins: stat(["admin"]), clients: stat(["client"]), all: stat() }} />

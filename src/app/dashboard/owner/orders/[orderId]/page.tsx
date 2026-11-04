@@ -10,6 +10,12 @@ import { DiagnosticReport } from "@/components/orders/diagnostic-report";
 import { MechanicDiagnosticForm } from "@/components/orders/mechanic-diagnostic-form";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OwnerBudgetEditor } from "@/components/orders/owner-budget-editor";
+import { OrderWhatsAppNotice } from "@/components/orders/order-whatsapp-notice";
+import { ClientAccessPanel } from "@/components/owner/client-access-panel";
+import { hasNoAppAccess, shareToken } from "@/lib/client-accounts";
+import { siteUrl } from "@/lib/seo";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { diagnosticDetail } from "@/lib/vehicle-systems";
 import { OrderPaymentPanel } from "@/components/owner/order-payment-panel";
 import { OrderMechanicAssignment } from "@/components/owner/order-mechanic-assignment";
 import { OrderProgressAction } from "@/components/owner/order-progress-action";
@@ -112,6 +118,11 @@ export default async function OwnerOrderDetailPage({
     (profile) => profile.id === mechanic?.profile_id,
   );
   const status = order.status as OrderStatus;
+  // Clients registered without email only hear about the order by WhatsApp.
+  const adminClient = createAdminClient();
+  const customerAccount = vehicle?.user_id && adminClient ? (await adminClient.auth.admin.getUserById(vehicle.user_id)).data.user : null;
+  const noAppAccess = Boolean(customerAccount && hasNoAppAccess(customerAccount.email));
+  const noticeStatus = status === "ingresado" || status === "presupuestado" || status === "listo_para_entregar";
   const repairOptions = status === "ingresado" ? await getGarageRepairOptions(dataClient, garage.id) : [];
   const diagnostics: Diagnostic[] = (diagnosticRows ?? []).map((item) => ({
     id: item.id,
@@ -201,6 +212,20 @@ export default async function OwnerOrderDetailPage({
           orderReference={order.id.slice(0, 8).toUpperCase()}
         />
       )}
+      {noAppAccess && vehicle && <ClientAccessPanel clientId={vehicle.user_id} clientName={customer?.full_name ?? "Cliente"} phone={customer?.phone ?? null} garage={{ name: garage.name, slug: garage.slug }} />}
+      {noticeStatus && (
+        <OrderWhatsAppNotice
+          phone={customer?.phone ?? null}
+          noAppAccess={noAppAccess}
+          customerName={customer?.full_name ?? ""}
+          garageName={garage.name}
+          vehicleLabel={vehicleLabel}
+          orderReference={order.id.slice(0, 8).toUpperCase()}
+          status={status}
+          intakeUrl={status === "ingresado" && intake ? `${siteUrl}/print/intake/${intake.id}?t=${shareToken("intake", intake.id)}` : undefined}
+          budget={status === "presupuestado" && budget ? { includesParts: budget.includes_parts, totalAmount: Number(budget.total_amount), diagnostics: diagnostics.map((item) => ({ description: item.description, detail: diagnosticDetail(item), price: Number(item.price) })) } : undefined}
+        />
+      )}
       <VehicleHistoryPanel history={history} currentMileage={intake?.mileage} />
       <div className="mt-4" />
       {status === "ingresado" && (
@@ -234,7 +259,7 @@ export default async function OwnerOrderDetailPage({
             Decisión del presupuesto
           </h2>
           <p className="mb-4 mt-1 text-sm text-emerald-900">
-            El cliente o el dueño del taller pueden aceptar e iniciar la
+            El cliente o el administrador del taller pueden aceptar e iniciar la
             reparación, o rechazar este presupuesto.
           </p>
           <BudgetDecisionActions orderId={order.id} />

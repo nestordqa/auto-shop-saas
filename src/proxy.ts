@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 
-import { GARAGE_CONTEXT_COOKIE, GARAGE_CONTEXT_MAX_AGE, garageLoginSlug } from "@/lib/garage-context";
+import { GARAGE_CONTEXT_COOKIE, GARAGE_CONTEXT_MAX_AGE, GARAGE_HISTORY_COOKIE, garageLoginSlug, withGarageInHistory } from "@/lib/garage-context";
 import { updateSession } from "@/lib/supabase/proxy";
 
 export async function proxy(request: NextRequest) {
@@ -11,6 +11,7 @@ export async function proxy(request: NextRequest) {
   if (slug) {
     request.cookies.set(GARAGE_CONTEXT_COOKIE, slug);
     response.cookies.set(GARAGE_CONTEXT_COOKIE, slug, { path: "/", maxAge: GARAGE_CONTEXT_MAX_AGE, sameSite: "lax" });
+    response.cookies.set(GARAGE_HISTORY_COOKIE, withGarageInHistory(request.cookies.get(GARAGE_HISTORY_COOKIE)?.value, slug), { path: "/", maxAge: GARAGE_CONTEXT_MAX_AGE, sameSite: "lax" });
   } else if (pathname === "/login") {
     response.cookies.delete(GARAGE_CONTEXT_COOKIE);
   }

@@ -72,11 +72,11 @@ export default async function ContractDetailPage({ params, searchParams }: { par
         {contract.status === "active" && <EndContractButton contractId={contract.id} />}
       </div>
     </header>
-    {created && <p className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">Contrato generado. Descarga el PDF y envíale el mensaje al owner.</p>}
+    {created && <p className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">Contrato generado. Descarga el PDF y envíale el mensaje al administrador.</p>}
 
     {trialExpired && <section className="mt-6 rounded-lg border border-orange-200 bg-orange-50/50 p-5 shadow-sm">
       <h2 className="font-display text-xl font-bold">La prueba terminó el {formatDate(contract.end_date!)}</h2>
-      <p className="mt-1 text-sm text-stone-600">Pregúntale al owner cómo le fue y si quiere continuar. Si sigue, genera su contrato de pago; si no, finaliza este contrato.</p>
+      <p className="mt-1 text-sm text-stone-600">Pregúntale al administrador cómo le fue y si quiere continuar. Si sigue, genera su contrato de pago; si no, finaliza este contrato.</p>
       <div className="mt-4 max-w-2xl"><TrialFollowUp contract={contract} garageName={garage.name} owner={{ fullName: owner.full_name, phone: owner.phone }} /></div>
     </section>}
     <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
@@ -84,10 +84,10 @@ export default async function ContractDetailPage({ params, searchParams }: { par
         <h2 className="font-display text-xl font-bold">Condiciones</h2>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
           <Item label="Tipo" value={contract.kind === "trial" ? "Mes de prueba ($0)" : "Contrato de pago"} />
-          <Item label="Firma del owner" value={contract.signed_at ? `Firmado por ${contract.owner_signed_name ?? "el owner"} el ${new Intl.DateTimeFormat("es-VE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Caracas" }).format(new Date(contract.signed_at))}` : "Pendiente: el owner lo firma desde su panel (Facturación)"} />
+          <Item label="Firma del administrador" value={contract.signed_at ? `Firmado por ${contract.owner_signed_name ?? "el administrador"} el ${new Intl.DateTimeFormat("es-VE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Caracas" }).format(new Date(contract.signed_at))}` : "Pendiente: el administrador lo firma desde su panel (Facturación)"} />
           <Item label="Vigencia" value={`${formatDate(contract.start_date)} → ${contract.end_date ? formatDate(contract.end_date) : "indefinida"}`} />
           {contract.kind === "paid" && <><Item label="Plan" value={contract.plan ? planSummary(contract.plan) : `Comisión del ${Number(contract.commission_percent)}% (plan anterior)`} /><Item label="Ciclo de cobro" value={CYCLE_LABELS[contract.billing_cycle!]} /><Item label="Vencimiento" value={`Al cierre de cada período · suspensión tras ${LOCK_AFTER_DAYS} días de mora`} /></>}
-          <Item label="Owner" value={[owner.full_name, owner.document_id, ownerAuth.user?.email, owner.phone].filter(Boolean).join(" · ")} />
+          <Item label="Administrador" value={[owner.full_name, owner.document_id, ownerAuth.user?.email, owner.phone].filter(Boolean).join(" · ")} />
           {contract.notes && <Item label="Notas internas" value={contract.notes} />}
         </dl>
         <a href={`/api/contracts/${contract.id}/pdf`} target="_blank" rel="noreferrer" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#d9341d] hover:underline"><ExternalLink size={16} /> Ver PDF</a>
@@ -100,7 +100,7 @@ export default async function ContractDetailPage({ params, searchParams }: { par
     </div>
 
     {reports.length > 0 && <section className="mt-6 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm">
-      <h2 className="p-5 pb-2 font-display text-xl font-bold">Pagos reportados por el owner</h2>
+      <h2 className="p-5 pb-2 font-display text-xl font-bold">Pagos reportados por el administrador</h2>
       <PaymentReportList reports={reports} />
     </section>}
 

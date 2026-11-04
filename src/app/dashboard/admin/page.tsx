@@ -19,7 +19,7 @@ export default async function AdminDashboardPage() {
     { label: "Órdenes abiertas", value: ordersCount.count ?? 0, icon: ClipboardCheck },
   ];
   const sections = [
-    { title: "Talleres", description: "Gestiona sedes, owners y operación.", href: "/dashboard/admin/garages", icon: Building2 },
+    { title: "Talleres", description: "Gestiona sedes, administradores y operación.", href: "/dashboard/admin/garages", icon: Building2 },
     { title: "Usuarios", description: "Consulta roles, datos y actividad.", href: "/dashboard/admin/users", icon: Users },
     { title: "Catálogo", description: "Administra marcas y modelos.", href: "/dashboard/admin/catalog", icon: CarFront },
   ];

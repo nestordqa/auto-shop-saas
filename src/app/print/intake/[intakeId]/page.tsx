@@ -7,20 +7,22 @@ import { TorkeMark } from "@/components/brand/torke-logo";
 import { IntakeDocument } from "@/components/intake/intake-summary";
 import { PrintButton } from "@/components/intake/print-button";
 import { getStaffGarage, staffCanAccessOrder } from "@/lib/auth/garage-staff";
+import { isValidShareToken } from "@/lib/client-accounts";
 import { getOrderIntake } from "@/lib/intake-data";
 import { noIndex } from "@/lib/seo";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-type Params = { params: Promise<{ intakeId: string }> };
+type Params = { params: Promise<{ intakeId: string }>; searchParams: Promise<{ t?: string }> };
 
 const dateTime = { format: (value: Date) => formatAppointmentDateTime(value, "long") };
 
-/** Loads the intake only for admins, the garage's owner/managers or the vehicle's client. */
-const loadIntakeDocument = cache(async (intakeId: string) => {
+/** Loads the intake for admins, the garage's staff, the vehicle's client, or anyone with the signed link sent by WhatsApp (`?t=`). */
+const loadIntakeDocument = cache(async (intakeId: string, token?: string) => {
+  const shared = isValidShareToken("intake", intakeId, token);
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user && !shared) redirect("/login");
   const admin = createAdminClient();
   if (!admin) notFound();
 
@@ -33,10 +35,10 @@ const loadIntakeDocument = cache(async (intakeId: string) => {
   ]);
   if (!vehicle) notFound();
 
-  const role = user.app_metadata.role;
-  const authorized = role === "admin"
+  const role = user?.app_metadata.role;
+  const authorized = shared || (user && (role === "admin"
     || ((role === "garage_owner" || role === "garage_manager") && staffCanAccessOrder(await getStaffGarage(admin, user), order))
-    || (role === "client" && vehicle.user_id === user.id);
+    || (role === "client" && vehicle.user_id === user.id)));
   if (!authorized) redirect("/unauthorized");
 
   const [intake, { data: customer }] = await Promise.all([
@@ -54,16 +56,16 @@ const loadIntakeDocument = cache(async (intakeId: string) => {
   };
 });
 
-export async function generateMetadata({ params }: Params): Promise<Metadata> {
-  const { intakeId } = await params;
-  const { reference, vehicleLabel } = await loadIntakeDocument(intakeId);
+export async function generateMetadata({ params, searchParams }: Params): Promise<Metadata> {
+  const [{ intakeId }, { t }] = await Promise.all([params, searchParams]);
+  const { reference, vehicleLabel } = await loadIntakeDocument(intakeId, t);
   // The title is the default file name when saving as PDF.
   return { title: { absolute: `Ingreso ${reference} - ${vehicleLabel}` }, robots: noIndex };
 }
 
-export default async function IntakePrintPage({ params }: Params) {
-  const { intakeId } = await params;
-  const { intake, reference, vehicleLabel, garage, customer } = await loadIntakeDocument(intakeId);
+export default async function IntakePrintPage({ params, searchParams }: Params) {
+  const [{ intakeId }, { t }] = await Promise.all([params, searchParams]);
+  const { intake, reference, vehicleLabel, garage, customer } = await loadIntakeDocument(intakeId, t);
 
   return (
     <div className="min-h-dvh bg-stone-200 py-6 print:bg-white print:py-0">
@@ -71,7 +73,7 @@ export default async function IntakePrintPage({ params }: Params) {
       <style>{"@page { size: A4; margin: 0; } @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }"}</style>
       <div className="mx-auto mb-4 flex max-w-[210mm] items-center justify-between gap-3 px-4 print:hidden">
         <p className="text-sm text-stone-600">Elige «Guardar como PDF» como destino.</p>
-        <PrintButton auto />
+        <PrintButton auto={!t} />
       </div>
 
       <article className="mx-auto max-w-[210mm] bg-white p-[12mm] text-stone-950 shadow-lg print:max-w-none print:shadow-none">

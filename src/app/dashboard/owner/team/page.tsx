@@ -48,4 +48,4 @@ export default async function OwnerTeamPage({ searchParams }: { searchParams: Pr
 }
 
 function Metric({ label, value, icon: Icon }: { label: string; value: number; icon: typeof Users }) { return <article className="flex items-center justify-between rounded-lg border border-stone-200 bg-white p-4"><div><p className="text-xs text-stone-500">{label}</p><p className="text-3xl font-bold">{value}</p></div><Icon className="text-stone-400" size={20} /></article>; }
-function MissingGarage() { return <div className="mx-auto max-w-3xl px-4 py-12"><h1 className="font-display text-3xl font-bold">Taller no asignado</h1><p className="mt-2 text-stone-600">La cuenta autenticada no coincide con el owner configurado para un taller.</p></div>; }
+function MissingGarage() { return <div className="mx-auto max-w-3xl px-4 py-12"><h1 className="font-display text-3xl font-bold">Taller no asignado</h1><p className="mt-2 text-stone-600">La cuenta autenticada no coincide con el administrador configurado para un taller.</p></div>; }

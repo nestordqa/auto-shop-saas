@@ -8,7 +8,7 @@ export type BroadcastAudience = "owners" | "admins" | "clients" | "all" | "selec
 type UserOption = { id: string; name: string; email: string | null; roleLabel: string; hasPush: boolean };
 type AudienceStat = { total: number; withPush: number };
 
-export const AUDIENCE_LABELS: Record<BroadcastAudience, string> = { owners: "Owners", admins: "Admins", clients: "Clientes", all: "Todos", selected: "Usuarios seleccionados" };
+export const AUDIENCE_LABELS: Record<BroadcastAudience, string> = { owners: "Administradores de taller", admins: "Admins", clients: "Clientes", all: "Todos", selected: "Usuarios seleccionados" };
 
 export function BroadcastForm({ users, stats }: { users: UserOption[]; stats: Record<Exclude<BroadcastAudience, "selected">, AudienceStat> }) {
   const router = useRouter();

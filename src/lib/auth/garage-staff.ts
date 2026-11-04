@@ -52,7 +52,7 @@ export async function authorizeStaffRequest({ ownerOnly = false, allowLocked = f
   const staff = await getStaffGarage(admin, user);
   if (!staff) return { ok: false, response: NextResponse.json({ error: "Tu cuenta no tiene un taller asignado." }, { status: 403 }) };
   if (!allowLocked && (await getGarageBillingStatus(staff.garageId)).locked) {
-    return { ok: false, response: NextResponse.json({ error: `El acceso del taller está suspendido por más de ${LOCK_AFTER_DAYS} días de mora. El owner debe ponerse al día desde Facturación.` }, { status: 402 }) };
+    return { ok: false, response: NextResponse.json({ error: `El acceso del taller está suspendido por más de ${LOCK_AFTER_DAYS} días de mora. El administrador debe ponerse al día desde Facturación.` }, { status: 402 }) };
   }
   return { ok: true, user, admin, staff };
 }

@@ -56,7 +56,7 @@ export function ProspectFormModal({ prospect }: { prospect?: Prospect }) {
               </fieldset>
               <fieldset className="grid gap-3 sm:grid-cols-2">
                 <legend className="mb-2 text-sm font-bold">Contacto</legend>
-                <input name="contactName" maxLength={120} defaultValue={prospect?.contact_name ?? ""} placeholder="Nombre del dueño o contacto" className={input} />
+                <input name="contactName" maxLength={120} defaultValue={prospect?.contact_name ?? ""} placeholder="Nombre del administrador o contacto" className={input} />
                 <input name="phone" type="tel" maxLength={30} defaultValue={prospect?.phone ?? ""} placeholder="Teléfono / WhatsApp" className={input} />
                 <input name="email" type="email" maxLength={200} defaultValue={prospect?.email ?? ""} placeholder="Correo" className={`${input} sm:col-span-2`} />
               </fieldset>

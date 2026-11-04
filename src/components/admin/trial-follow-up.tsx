@@ -31,7 +31,7 @@ export function TrialFollowUp({ contract, garageName, owner }: TrialFollowUpProp
       <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md border border-stone-200 bg-stone-50 p-4 font-sans text-sm text-stone-700">{message}</pre>
       <a href={`https://wa.me/${phone}?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer" onClick={() => { if (!contract.follow_up) void save("contacted"); }} className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#1f9d55] px-4 font-bold text-white hover:bg-[#178247]"><MessageCircle size={18} /> {contract.follow_up ? "Reenviar seguimiento" : "Enviar seguimiento por WhatsApp"}</a>
       <div>
-        <p className="text-xs font-bold uppercase text-stone-500">Respuesta del owner</p>
+        <p className="text-xs font-bold uppercase text-stone-500">Respuesta del administrador</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {(["interested", "declined"] as const).map((value) => (
             <button key={value} type="button" disabled={Boolean(pending)} onClick={() => save(value)} className={`flex min-h-11 items-center justify-center gap-2 rounded-md border px-3 text-sm font-bold disabled:opacity-60 ${contract.follow_up === value ? value === "interested" ? "border-emerald-600 bg-emerald-600 text-white" : "border-red-600 bg-red-600 text-white" : "border-stone-300"}`}>{pending === value && <LoaderCircle className="animate-spin" size={16} />} {FOLLOW_UP_LABELS[value]}</button>

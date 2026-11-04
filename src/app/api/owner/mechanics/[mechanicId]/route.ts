@@ -18,7 +18,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ me
 
   let update: { is_active: boolean } | { branch_id: string };
   if ("branchId" in parsed.data) {
-    if (auth.staff.role !== "garage_owner") return NextResponse.json({ error: "Solo el owner puede mover mecánicos entre sucursales." }, { status: 403 });
+    if (auth.staff.role !== "garage_owner") return NextResponse.json({ error: "Solo el administrador puede mover mecánicos entre sucursales." }, { status: 403 });
     const branchId = await resolveStaffBranch(admin, auth.staff, parsed.data.branchId);
     if (!branchId) return NextResponse.json({ error: "La sucursal seleccionada no es válida." }, { status: 400 });
     update = { branch_id: branchId };

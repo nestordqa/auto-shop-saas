@@ -8,7 +8,7 @@ import { DEFAULT_PITCHES } from "@/lib/prospect-pitch";
 export type TemplateKey =
   | "prospect_pitch_local" | "prospect_pitch_remote" | "prospect_requirements" | "prospect_follow_up"
   | "garage_created" | "garage_follow_up_local" | "garage_follow_up_remote" | "owner_welcome" | "contract_new" | "trial_follow_up"
-  | "credentials" | "mechanic_welcome" | "order_status"
+  | "credentials" | "mechanic_welcome" | "client_welcome" | "order_status"
   | "landing_contact" | "support_request";
 
 type TemplateDefinition = { group: string; label: string; description: string; placeholders: Record<string, string>; body: string };
@@ -46,10 +46,15 @@ export const MESSAGE_TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
       "3. Dirección completa",
       "4. Ubicación en Google Maps (opcional)",
       "",
-      "*Del dueño*",
+      "*Si el taller es de una empresa*",
+      "• Razón social",
+      "• RIF de la empresa",
+      "",
+      "*Del administrador de la cuenta*",
+      "(la persona que manejará TorkeOS; si es una empresa, quien la represente)",
       "5. Nombre completo",
-      "6. Cédula o RIF",
-      "7. Correo electrónico (será tu usuario para entrar)",
+      "6. Cédula",
+      "7. Correo electrónico (será su usuario para entrar)",
       "8. Teléfono",
       "",
       "*Elige tu plan*",
@@ -77,7 +82,7 @@ export const MESSAGE_TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
     group: "Talleres",
     label: "Seguimiento · talleres en Mérida",
     description: "Botón «Seguimiento» de la lista de talleres, si el taller está en Mérida (ofrece una cita presencial).",
-    placeholders: { owner: "Nombre del owner", taller: "Nombre del taller" },
+    placeholders: { owner: "Nombre del administrador", taller: "Nombre del taller" },
     body: lines(
       "¡Hola {owner}! Te escribe el equipo de TorkeOS.",
       "",
@@ -90,7 +95,7 @@ export const MESSAGE_TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
     group: "Talleres",
     label: "Seguimiento · talleres fuera de Mérida",
     description: "Botón «Seguimiento» de la lista de talleres, si el taller está fuera de Mérida.",
-    placeholders: { owner: "Nombre del owner", taller: "Nombre del taller" },
+    placeholders: { owner: "Nombre del administrador", taller: "Nombre del taller" },
     body: lines(
       "¡Hola {owner}! Te escribe el equipo de TorkeOS.",
       "",
@@ -103,7 +108,7 @@ export const MESSAGE_TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
     group: "Talleres",
     label: "Taller creado (enlace de reservas)",
     description: "Al crear un taller y en el botón de WhatsApp de la lista de talleres.",
-    placeholders: { taller: "Nombre del taller", enlace: "Enlace de reservas del taller", acceso: "Bloque de acceso con correo y contraseña temporal (o cómo entrar, si el owner ya existía)", contrato: "Bloque del contrato: tipo, vigencia y enlace para firmarlo (se genera solo)" },
+    placeholders: { taller: "Nombre del taller", enlace: "Enlace de reservas del taller", acceso: "Bloque de acceso con correo y contraseña temporal (o cómo entrar, si el administrador ya existía)", contrato: "Bloque del contrato: tipo, vigencia y enlace para firmarlo (se genera solo)" },
     body: lines(
       "¡Hola! Tu taller {taller} ya está activo en TorkeOS.",
       "",
@@ -118,7 +123,7 @@ export const MESSAGE_TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
     group: "Talleres",
     label: "Bienvenida (todo listo)",
     description: "Contratos › «Mensaje de bienvenida»: enlaces y cómo instalar la app y activar notificaciones.",
-    placeholders: { owner: "Nombre del owner", taller: "Nombre del taller", panel: "Enlace para iniciar sesión", enlace: "Enlace de reservas del taller" },
+    placeholders: { owner: "Nombre del administrador", taller: "Nombre del taller", panel: "Enlace para iniciar sesión", enlace: "Enlace de reservas del taller" },
     body: lines(
       "¡Hola {owner}! Todo listo ✅",
       "",
@@ -143,7 +148,7 @@ export const MESSAGE_TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
     group: "Talleres",
     label: "Nuevo contrato",
     description: "Contratos › compartir contrato (WhatsApp o correo).",
-    placeholders: { owner: "Nombre del owner", taller: "Nombre del taller", codigo: "Código del contrato (TK-0001)", condiciones: "Condiciones: prueba, plan y cobro (se generan solas)", enlace: "Enlace para leer y firmar el contrato" },
+    placeholders: { owner: "Nombre del administrador", taller: "Nombre del taller", codigo: "Código del contrato (TK-0001)", condiciones: "Condiciones: prueba, plan y cobro (se generan solas)", enlace: "Enlace para leer y firmar el contrato" },
     body: lines(
       "Hola {owner},",
       "",
@@ -159,7 +164,7 @@ export const MESSAGE_TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
     group: "Talleres",
     label: "Seguimiento al terminar la prueba",
     description: "Contratos de prueba vencidos › «Enviar seguimiento».",
-    placeholders: { owner: "Nombre del owner", taller: "Nombre del taller", fin: "Fecha en que terminó la prueba", planes: "Comparación de planes y precios (se genera sola)" },
+    placeholders: { owner: "Nombre del administrador", taller: "Nombre del taller", fin: "Fecha en que terminó la prueba", planes: "Comparación de planes y precios (se genera sola)" },
     body: lines(
       "Hola {owner},",
       "",
@@ -193,12 +198,30 @@ export const MESSAGE_TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
   mechanic_welcome: {
     group: "Accesos",
     label: "Bienvenida del mecánico",
-    description: "Equipo › al crear un mecánico (lo envía el owner o encargado).",
+    description: "Equipo › al crear un mecánico (lo envía el administrador o encargado).",
     placeholders: { nombre: "Nombre del mecánico", acceso: "Bloque de acceso con correo y contraseña temporal" },
     body: lines(
       "¡Hola, {nombre}! Ya tienes tu cuenta de mecánico en TorkeOS.",
       "",
       "{acceso}",
+    ),
+  },
+  client_welcome: {
+    group: "Accesos",
+    label: "Bienvenida del cliente",
+    description: "Crear orden › cliente nuevo › «Enviar acceso por WhatsApp» (lo envía el taller).",
+    placeholders: { nombre: "Nombre del cliente", taller: "Nombre del taller", enlace: "Enlace de reservas del taller", acceso: "Bloque de acceso con correo y contraseña temporal" },
+    body: lines(
+      "¡Hola, {nombre}! En {taller} te registramos en TorkeOS, la app donde podrás seguir el estado de tu vehículo, ver y aprobar presupuestos y agendar tus citas.",
+      "",
+      "{acceso}",
+      "",
+      "*Cómo empezar*",
+      "1. Entra con los datos de arriba y cambia tu contraseña.",
+      "2. Instala la app: en iPhone abre el enlace en Safari › Compartir › «Agregar a inicio»; en Android ábrelo en Chrome › menú ⋮ › «Instalar app».",
+      "3. Activa las notificaciones para enterarte al momento de cada avance de tu orden.",
+      "",
+      "*Para agendar tus próximas citas con {taller}:* {enlace}",
     ),
   },
   order_status: {

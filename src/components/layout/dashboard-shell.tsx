@@ -26,6 +26,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
+import { rememberGarage } from "@/lib/garage-context";
 import { useMessageTemplate } from "@/components/messages/use-message-template";
 import { TorkeMark } from "@/components/brand/torke-logo";
 import { LiveRefresh } from "@/components/layout/live-refresh";
@@ -111,6 +112,7 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
   useEffect(() => {
     if (role === "client" && garageContext) {
       document.cookie = `garage_context=${encodeURIComponent(garageContext.slug)}; path=/; max-age=31536000; samesite=lax`;
+      rememberGarage(garageContext.slug);
     }
   }, [garageContext, role]);
 
