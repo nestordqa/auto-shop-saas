@@ -12,10 +12,17 @@ function isStandalone() {
 
 /** Tolerates quotes, spaces and line breaks pasted into the env var; a valid key is 65 bytes (uncompressed P-256). */
 function urlBase64ToUint8Array(value: string) {
-  const clean = value.trim().replace(/^["']|["']$/g, "").replace(/\s+/g, "").replace(/=+$/, "");
+  // Also drops a pasted "NEXT_PUBLIC_VAPID_PUBLIC_KEY=" prefix.
+  const clean = value.trim().replace(/^[A-Z_]+=/, "").replace(/^["']|["']$/g, "").replace(/\s+/g, "").replace(/=+$/, "");
   const padded = (clean + "=".repeat((4 - (clean.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/");
-  const bytes = Uint8Array.from(atob(padded), (char) => char.charCodeAt(0));
-  if (bytes.length !== 65 || bytes[0] !== 4) throw new Error("La clave pública de notificaciones (NEXT_PUBLIC_VAPID_PUBLIC_KEY) de este despliegue no es válida. Revisa que sea la clave PÚBLICA completa, sin comillas, y vuelve a desplegar.");
+  let bytes: Uint8Array<ArrayBuffer>;
+  try {
+    bytes = Uint8Array.from(atob(padded), (char) => char.charCodeAt(0));
+  } catch {
+    bytes = new Uint8Array();
+  }
+  // Only the length and the first/last characters are shown: enough to compare with the real key, nothing secret (it is public).
+  if (bytes.length !== 65 || bytes[0] !== 4) throw new Error(`La clave pública de notificaciones de este despliegue no es válida (recibida: ${clean.length} caracteres, "${clean.slice(0, 6)}…${clean.slice(-4)}"; debe tener 87 y empezar con "B"). Corrige NEXT_PUBLIC_VAPID_PUBLIC_KEY en Netlify y vuelve a desplegar.`);
   return bytes;
 }
 

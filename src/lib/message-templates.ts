@@ -6,8 +6,8 @@ import { DEFAULT_PITCHES } from "@/lib/prospect-pitch";
  * Placeholders like {taller} are filled when the message is prepared; one left empty disappears cleanly.
  */
 export type TemplateKey =
-  | "prospect_pitch_local" | "prospect_pitch_remote" | "prospect_requirements"
-  | "garage_created" | "owner_welcome" | "contract_new" | "trial_follow_up"
+  | "prospect_pitch_local" | "prospect_pitch_remote" | "prospect_requirements" | "prospect_follow_up"
+  | "garage_created" | "garage_follow_up_local" | "garage_follow_up_remote" | "owner_welcome" | "contract_new" | "trial_follow_up"
   | "credentials" | "mechanic_welcome" | "order_status"
   | "landing_contact" | "support_request";
 
@@ -58,6 +58,45 @@ export const MESSAGE_TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
       "9. Indícanos qué plan prefieres (puedes cambiarlo más adelante).",
       "",
       "Con eso es suficiente. Una vez creado tu taller te enviaremos tu acceso y el contrato de tu *primer mes de prueba, sin costo*, con todas las funciones.",
+    ),
+  },
+  prospect_follow_up: {
+    group: "Prospectos",
+    label: "Seguimiento",
+    description: "Botón «Seguimiento» de un prospecto: ¿pudo ver la app?, ¿tiene dudas?",
+    placeholders: { contacto: "Nombre del contacto", taller: "Nombre del taller" },
+    body: lines(
+      "¡Hola {contacto}! Te escribe el equipo de TorkeOS.",
+      "",
+      "Hace unos días te compartimos información sobre nuestra app para {taller} y queríamos saber si tuviste oportunidad de verla.",
+      "",
+      "¿Te quedó alguna duda o hay algo que quieras que te expliquemos? Con gusto te ayudamos por aquí.",
+    ),
+  },
+  garage_follow_up_local: {
+    group: "Talleres",
+    label: "Seguimiento · talleres en Mérida",
+    description: "Botón «Seguimiento» de la lista de talleres, si el taller está en Mérida (ofrece una cita presencial).",
+    placeholders: { owner: "Nombre del owner", taller: "Nombre del taller" },
+    body: lines(
+      "¡Hola {owner}! Te escribe el equipo de TorkeOS.",
+      "",
+      "Queríamos saber qué tal te ha parecido la experiencia con TorkeOS en {taller}. ¿Te ha resultado útil? ¿Tienes alguna duda o algo que mejorarías?",
+      "",
+      "Como estás aquí en Mérida, si quieres podemos agendar una visita a tu taller para explicarte todo el funcionamiento en persona, a ti y a tu equipo. Dinos qué día y hora te queda mejor.",
+    ),
+  },
+  garage_follow_up_remote: {
+    group: "Talleres",
+    label: "Seguimiento · talleres fuera de Mérida",
+    description: "Botón «Seguimiento» de la lista de talleres, si el taller está fuera de Mérida.",
+    placeholders: { owner: "Nombre del owner", taller: "Nombre del taller" },
+    body: lines(
+      "¡Hola {owner}! Te escribe el equipo de TorkeOS.",
+      "",
+      "Queríamos saber qué tal te ha parecido la experiencia con TorkeOS en {taller}. ¿Te ha resultado útil? ¿Tienes alguna duda o algo que mejorarías?",
+      "",
+      "Si quieres, podemos hacer una videollamada para explicarte todo el funcionamiento. Quedamos atentos.",
     ),
   },
   garage_created: {
