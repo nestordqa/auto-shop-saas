@@ -6,6 +6,7 @@ export const roleRoutes: Record<AppRole, string> = {
   garage_manager: "/dashboard/owner",
   mechanic: "/dashboard/mechanic",
   client: "/dashboard/client",
+  seller: "/dashboard/seller",
 };
 
 export function homeForRole(role: unknown) {

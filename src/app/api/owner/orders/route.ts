@@ -72,7 +72,7 @@ export async function POST(request: Request) {
   const parsed = orderSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: validationMessage(parsed.error.issues[0]?.path ?? []) }, { status: 400 });
 
-  const auth = await authorizeStaffRequest({ unavailable: "La creación de órdenes no está configurada." });
+  const auth = await authorizeStaffRequest({ allowReception: true, unavailable: "La creación de órdenes no está configurada." });
   if (!auth.ok) return auth.response;
   const { admin } = auth;
   const garage = { id: auth.staff.garageId };

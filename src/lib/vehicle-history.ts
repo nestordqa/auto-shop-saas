@@ -41,8 +41,8 @@ export type VehicleHistory = {
 type Viewer = { garageId: string } | { client: true };
 
 /**
- * Clinical history of a vehicle across every TorkeOS garage. Garages see other
- * garages' work without prices or names; clients see everything of their own.
+ * Clinical history of a vehicle across every TorkeOS garage. Every visit shows the garage where it was done;
+ * garages see other garages' work without prices; clients see everything of their own.
  */
 export async function getVehicleHistory(
   dataClient: SupabaseClient,
@@ -74,7 +74,7 @@ export async function getVehicleHistory(
     return {
       orderId: order.id,
       date: order.received_at ?? order.appointment_date,
-      garageName: ownGarage ? garages?.find((garage) => garage.id === order.garage_id)?.name ?? "Taller" : "Otro taller TorkeOS",
+      garageName: garages?.find((garage) => garage.id === order.garage_id)?.name ?? "Taller TorkeOS",
       ownGarage,
       status: order.status as OrderStatus,
       mileage: intake?.mileage ?? null,

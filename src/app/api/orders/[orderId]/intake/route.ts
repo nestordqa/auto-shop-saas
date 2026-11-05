@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getAuthorizedDiagnosticOrder } from "@/lib/auth/diagnostic-order-access";
+import { getAuthorizedIntakeOrder } from "@/lib/auth/diagnostic-order-access";
 import { intakePhotoPrefix, intakeSchema } from "@/lib/intake";
 import { notifyStatusChange } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -21,8 +21,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ ord
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "El formato de ingreso no está configurado." }, { status: 503 });
 
-  const order = await getAuthorizedDiagnosticOrder(admin, user, orderId);
-  if (!order) return NextResponse.json({ error: "La orden no pertenece a tu taller o no está asignada a tu perfil." }, { status: 403 });
+  const order = await getAuthorizedIntakeOrder(admin, user, orderId);
+  if (!order) return NextResponse.json({ error: "Solo el taller o un mecánico de recepción de esta sucursal puede ingresar el vehículo." }, { status: 403 });
   if (order.status !== "por_ingresar") return NextResponse.json({ error: "Este vehículo ya fue ingresado." }, { status: 409 });
 
   const input = parsed.data;

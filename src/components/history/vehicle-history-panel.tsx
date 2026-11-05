@@ -106,7 +106,7 @@ export function VehicleHistoryPanel({ history, currentMileage, showHints = true,
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                   <span className="inline-flex items-center gap-1 font-bold"><CalendarDays size={14} /> {dateFormat.format(new Date(visit.date))}</span>
-                  <span className="text-stone-500">{visit.garageName}</span>
+                  <span className="inline-flex items-center gap-1 rounded-sm bg-stone-100 px-2 py-0.5 text-xs font-bold text-stone-700">{visit.garageName}{visit.ownGarage ? "" : " · otro taller"}</span>
                   {visit.mileage != null && <span className="text-stone-500">· {visit.mileage.toLocaleString("es-VE")} km</span>}
                   <OrderStatusBadge status={visit.status} />
                 </p>

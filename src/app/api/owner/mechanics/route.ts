@@ -13,6 +13,8 @@ const mechanicSchema = z.object({
   temporaryPassword: z.string().min(8).max(72),
   specialty: z.string().regex(/^[a-z0-9_]+$/).max(60).default("general"),
   branchId: z.uuid().optional(),
+  /** Trusted mechanic: does intakes, assigns mechanics and gets reception notifications. */
+  canReceive: z.union([z.boolean(), z.literal("on")]).optional().transform((value) => value === true || value === "on"),
 });
 
 export async function POST(request: Request) {
@@ -54,6 +56,7 @@ export async function POST(request: Request) {
     garage_id: garage.id,
     branch_id: branchId,
     specialty: input.specialty,
+    can_receive: input.canReceive,
   });
   if (mechanicError) {
     await admin.auth.admin.deleteUser(profileId);

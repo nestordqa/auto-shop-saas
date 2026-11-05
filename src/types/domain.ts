@@ -12,7 +12,7 @@ export const ORDER_STATUSES = [
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
-export type AppRole = "admin" | "garage_owner" | "garage_manager" | "mechanic" | "client";
+export type AppRole = "admin" | "garage_owner" | "garage_manager" | "mechanic" | "client" | "seller";
 
 export type GarageStaffRole = "garage_owner" | "garage_manager";
 

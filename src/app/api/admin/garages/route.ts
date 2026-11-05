@@ -1,47 +1,21 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { PLAN_KEYS } from "@/lib/plans";
-import { phoneSchema } from "@/lib/phone";
+import { createOwnerAccount, garageFieldsSchema, insertGarage, newOwnerSchema, startSchema } from "@/lib/garage-signup";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { toUrlSlug } from "@/lib/slugs";
-import { addDays, formatDate, todayDate, TRIAL_DAYS } from "@/lib/contracts";
-import { createContract } from "@/lib/contracts-create";
-import { specialtySummary } from "@/lib/mechanics";
-import { validSpecialtyKeys } from "@/lib/specialties-data";
+
+const shared = garageFieldsSchema.extend({
+  /** "trial" = free first month (default); a plan key = paid from today. */
+  start: startSchema,
+  prospectId: z.union([z.literal(""), z.uuid()]).optional(),
+  /** Seller who brought this garage (optional). */
+  sellerId: z.union([z.literal(""), z.uuid()]).optional(),
+});
 
 const garageSchema = z.discriminatedUnion("ownerMode", [
-  z.object({
-    ownerMode: z.literal("existing"),
-    ownerId: z.uuid(),
-    name: z.string().trim().min(2).max(120),
-    address: z.string().trim().min(5).max(300),
-    mapLocation: z.string().trim().max(500).optional(),
-    specialties: z.array(z.string().regex(/^[a-z0-9_]+$/).max(60)).max(40).default(["general"]),
-    /** "trial" = free first month (default); a plan key = paid from today. */
-    start: z.enum(["trial", ...PLAN_KEYS]).default("trial"),
-    prospectId: z.union([z.literal(""), z.uuid()]).optional(),
-    legalName: z.string().trim().max(160).optional(),
-    legalId: z.string().trim().max(30).optional(),
-  }),
-  z.object({
-    ownerMode: z.literal("new"),
-    ownerName: z.string().trim().min(2).max(120),
-    ownerEmail: z.email(),
-    ownerPhone: phoneSchema,
-    ownerDocument: z.string().trim().min(4).max(30),
-    temporaryPassword: z.string().min(8).max(72),
-    name: z.string().trim().min(2).max(120),
-    address: z.string().trim().min(5).max(300),
-    mapLocation: z.string().trim().max(500).optional(),
-    specialties: z.array(z.string().regex(/^[a-z0-9_]+$/).max(60)).max(40).default(["general"]),
-    /** "trial" = free first month (default); a plan key = paid from today. */
-    start: z.enum(["trial", ...PLAN_KEYS]).default("trial"),
-    prospectId: z.union([z.literal(""), z.uuid()]).optional(),
-    legalName: z.string().trim().max(160).optional(),
-    legalId: z.string().trim().max(30).optional(),
-  }),
+  shared.extend({ ownerMode: z.literal("existing"), ownerId: z.uuid() }),
+  shared.extend(newOwnerSchema.shape).extend({ ownerMode: z.literal("new"), temporaryPassword: z.string().min(8).max(72) }),
 ]);
 
 export async function POST(request: Request) {
@@ -56,77 +30,31 @@ export async function POST(request: Request) {
   const input = parsed.data;
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "La creación de talleres no está configurada." }, { status: 503 });
-  let ownerId = input.ownerMode === "existing" ? input.ownerId : "";
-  let createdAuthUser = false;
 
+  let ownerId: string;
+  let createdOwner = false;
   if (input.ownerMode === "new") {
-    const { data, error } = await admin.auth.admin.createUser({
-      email: input.ownerEmail,
-      password: input.temporaryPassword,
-      email_confirm: true,
-      app_metadata: { role: "garage_owner" },
-      user_metadata: { full_name: input.ownerName, phone: input.ownerPhone },
-    });
-    if (error || !data.user) {
-      return NextResponse.json({ error: error?.message ?? "No se pudo crear el administrador." }, { status: 400 });
-    }
-    ownerId = data.user.id;
-    createdAuthUser = true;
-    const { error: profileError } = await admin.from("profiles").update({
-      full_name: input.ownerName,
-      phone: input.ownerPhone,
-      document_id: input.ownerDocument,
-      role: "garage_owner",
-    }).eq("id", ownerId).select("id").single();
-    if (profileError) {
-      await admin.auth.admin.deleteUser(ownerId);
-      return NextResponse.json({ error: "No se pudo sincronizar el perfil del administrador." }, { status: 500 });
-    }
+    const owner = await createOwnerAccount(admin, { ...input, password: input.temporaryPassword });
+    if ("error" in owner) return NextResponse.json({ error: owner.error }, { status: 400 });
+    ownerId = owner.id;
+    createdOwner = true;
   } else {
-    const { data: owner } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("id", ownerId)
-      .eq("role", "garage_owner")
-      .maybeSingle();
+    const { data: owner } = await admin.from("profiles").select("id").eq("id", input.ownerId).eq("role", "garage_owner").maybeSingle();
     if (!owner) return NextResponse.json({ error: "El administrador no existe o ya no está disponible." }, { status: 400 });
+    ownerId = owner.id;
   }
 
-  const specialties = await validSpecialtyKeys(admin, input.specialties);
-  const baseSlug = toUrlSlug(input.name);
-  const { data: matchingSlugs } = await admin.from("garages").select("slug").like("slug", `${baseSlug}%`);
-  const usedSlugs = new Set((matchingSlugs ?? []).map(({ slug }) => slug));
-  let slug = baseSlug;
-  let suffix = 2;
-  while (usedSlugs.has(slug)) slug = `${baseSlug}-${suffix++}`;
-  const { data: garage, error: garageError } = await admin.from("garages").insert({
-    name: input.name,
-    slug,
-    address: input.address,
-    map_location: input.mapLocation || null,
-    legal_name: input.legalName || null,
-    legal_id: input.legalId?.toUpperCase() || null,
-    specialty: specialtySummary(specialties.keys, specialties.options),
-    specialties: specialties.keys.length ? specialties.keys : ["general"],
-    plan: input.start === "trial" ? null : input.start,
-    owner_id: ownerId,
-  }).select("id").single();
-
-  if (garageError) {
-    if (createdAuthUser) await admin.auth.admin.deleteUser(ownerId);
-    return NextResponse.json({ error: garageError.code === "23505" ? "Ese administrador ya tiene un taller." : "No se pudo crear el taller." }, { status: 409 });
+  let sellerId: string | null = null;
+  if (input.sellerId) {
+    const { data: seller } = await admin.from("sellers").select("id").eq("id", input.sellerId).maybeSingle();
+    if (!seller) return NextResponse.json({ error: "El vendedor seleccionado no existe." }, { status: 400 });
+    sellerId = seller.id;
   }
 
-  // Created from a prospect: close it as won and link it to the new garage.
-  if (input.prospectId && garage) await admin.from("garage_prospects").update({ status: "won", garage_id: garage.id, next_follow_up: null }).eq("id", input.prospectId);
-
-  // Every garage starts with a contract: the free month ($0, ends after TRIAL_DAYS) or the chosen plan from today.
-  const startDate = todayDate();
-  const contract = garage ? await createContract(admin, input.start === "trial"
-    ? { kind: "trial", garageId: garage.id, startDate, createdBy: user.id }
-    : { kind: "paid", garageId: garage.id, startDate, plan: input.start, billingCycle: "monthly", createdBy: user.id }) : null;
-  const contractId = contract && "id" in contract ? contract.id : null;
-
-  const { data: ownerProfile } = await admin.from("profiles").select("phone").eq("id", ownerId).maybeSingle();
-  return NextResponse.json({ success: true, garage: { name: input.name, slug, ownerPhone: ownerProfile?.phone ?? null, contractId, trialEnds: contractId && input.start === "trial" ? formatDate(addDays(startDate, TRIAL_DAYS - 1)) : null } }, { status: 201 });
+  const result = await insertGarage(admin, { ownerId, fields: input, start: input.start, createdBy: user.id, source: "admin", sellerId, prospectId: input.prospectId || null });
+  if ("error" in result) {
+    if (createdOwner) await admin.auth.admin.deleteUser(ownerId);
+    return NextResponse.json({ error: result.error }, { status: result.status });
+  }
+  return NextResponse.json({ success: true, garage: result.garage }, { status: 201 });
 }

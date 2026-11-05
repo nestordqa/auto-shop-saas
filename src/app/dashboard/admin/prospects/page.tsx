@@ -22,12 +22,12 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
   if (!admin) return <div className="mx-auto max-w-3xl px-4 py-12"><h1 className="font-display text-3xl font-bold">Prospectos</h1><p className="mt-2 text-stone-600">Configura SUPABASE_SECRET_KEY para gestionar prospectos.</p></div>;
 
   const [{ data, error }, { data: templateRows }] = await Promise.all([
-    admin.from("garage_prospects").select(PROSPECT_COLUMNS).order("created_at", { ascending: false }),
+    admin.from("garage_prospects").select(PROSPECT_COLUMNS).is("seller_id", null).order("created_at", { ascending: false }),
     admin.from("admin_message_templates").select("key, body"),
   ]);
   // Saved pitch templates override the built-in text.
   const templates = { ...DEFAULT_PITCHES, ...Object.fromEntries((templateRows ?? []).filter((row) => row.key in DEFAULT_PITCHES).map((row) => [row.key, row.body as string])) } as Record<PitchKey, string>;
-  if (error) return <div className="mx-auto max-w-3xl px-4 py-12"><h1 className="font-display text-3xl font-bold">Prospectos</h1><p className="mt-2 text-stone-600">No se pudieron cargar los prospectos. ¿Ejecutaste las migraciones 025 y 030?</p></div>;
+  if (error) return <div className="mx-auto max-w-3xl px-4 py-12"><h1 className="font-display text-3xl font-bold">Prospectos</h1><p className="mt-2 text-stone-600">No se pudieron cargar los prospectos. ¿Ejecutaste las migraciones 025, 030 y 042?</p></div>;
   const prospects = (data ?? []) as Prospect[];
   const today = todayDate();
   const query = q.trim().toLocaleLowerCase("es");

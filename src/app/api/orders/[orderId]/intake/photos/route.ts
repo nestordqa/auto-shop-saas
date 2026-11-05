@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getAuthorizedDiagnosticOrder } from "@/lib/auth/diagnostic-order-access";
+import { getAuthorizedIntakeOrder } from "@/lib/auth/diagnostic-order-access";
 import { INTAKE_PHOTO_TYPES, MAX_INTAKE_PHOTO_BYTES, intakePhotoPrefix } from "@/lib/intake";
 import { createUploadUrl, isStorageConfigured } from "@/lib/storage/intake-photos";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -35,7 +35,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ord
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "El formato de ingreso no está configurado." }, { status: 503 });
 
-  const order = await getAuthorizedDiagnosticOrder(admin, user, orderId);
+  const order = await getAuthorizedIntakeOrder(admin, user, orderId);
   if (!order || !["por_ingresar", "ingresado"].includes(order.status)) {
     return NextResponse.json({ error: "No puedes adjuntar fotos a esta orden." }, { status: 403 });
   }

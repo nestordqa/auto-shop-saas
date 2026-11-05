@@ -1,4 +1,4 @@
-import { ArrowRight, Building2, CarFront, ClipboardCheck, Users } from "lucide-react";
+import { ArrowRight, Building2, ClipboardCheck, Megaphone, Users } from "lucide-react";
 import Link from "next/link";
 
 import { requireRole } from "@/lib/auth/require-role";
@@ -21,7 +21,7 @@ export default async function AdminDashboardPage() {
   const sections = [
     { title: "Talleres", description: "Gestiona sedes, administradores y operación.", href: "/dashboard/admin/garages", icon: Building2 },
     { title: "Usuarios", description: "Consulta roles, datos y actividad.", href: "/dashboard/admin/users", icon: Users },
-    { title: "Catálogo", description: "Administra marcas y modelos.", href: "/dashboard/admin/catalog", icon: CarFront },
+    { title: "Vendedores", description: "Promotores, cupones, comisiones y sus métricas.", href: "/dashboard/admin/sellers", icon: Megaphone },
   ];
 
   return (

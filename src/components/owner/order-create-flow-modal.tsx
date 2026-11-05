@@ -71,7 +71,8 @@ type BranchOption = { id: string; name: string; schedule: unknown };
 const availableYears = Array.from({ length: new Date().getFullYear() - 1899 }, (_, index) => new Date().getFullYear() - index);
 
 /** `branches` lists the active branches the user can book into; with more than one a branch picker is shown. */
-export function OrderCreateFlowModal({ clients, vehicles, brands, models, mechanics, branches, garage }: { garage: { name: string; slug: string }; clients: ClientOption[]; vehicles: VehicleOption[]; brands: BrandOption[]; models: ModelOption[]; mechanics: MechanicOption[]; branches: BranchOption[] }) {
+/** `orderBasePath` is where the new order opens ("/dashboard/mechanic/orders" for reception mechanics). */
+export function OrderCreateFlowModal({ clients, vehicles, brands, models, mechanics, branches, garage, orderBasePath = "/dashboard/owner/orders" }: { garage: { name: string; slug: string }; clients: ClientOption[]; vehicles: VehicleOption[]; brands: BrandOption[]; models: ModelOption[]; mechanics: MechanicOption[]; branches: BranchOption[]; orderBasePath?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [clientSelection, setClientSelection] = useState("");
@@ -143,7 +144,7 @@ export function OrderCreateFlowModal({ clients, vehicles, brands, models, mechan
     setCreated(undefined);
     setClientSelection("");
     setPassword(generatePassword());
-    router.push(`/dashboard/owner/orders/${orderId}`);
+    router.push(`${orderBasePath}/${orderId}`);
     router.refresh();
   }
 

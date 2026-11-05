@@ -9,19 +9,21 @@ import { buildRequirementsMessage } from "@/lib/contracts";
 import { PROSPECT_STATUS_LABELS, PROSPECT_STATUS_STYLES, PROSPECT_STATUSES, type ProspectStatus } from "@/lib/prospects";
 import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
 
-async function patchStatus(id: string, status: ProspectStatus) {
-  const response = await fetch(`/api/admin/prospects/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+const ADMIN_API = "/api/admin/prospects";
+
+async function patchStatus(id: string, status: ProspectStatus, apiBase = ADMIN_API) {
+  const response = await fetch(`${apiBase}/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
   return response.ok;
 }
 
 /** Inline status picker for the prospects table. */
-export function ProspectStatusSelect({ id, status }: { id: string; status: ProspectStatus }) {
+export function ProspectStatusSelect({ id, status, apiBase = ADMIN_API }: { id: string; status: ProspectStatus; apiBase?: string }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
   async function change(next: ProspectStatus) {
     setPending(true);
-    const ok = await patchStatus(id, next);
+    const ok = await patchStatus(id, next, apiBase);
     setPending(false);
     if (!ok) return window.alert("No se pudo cambiar el estado.");
     router.refresh();
@@ -31,7 +33,7 @@ export function ProspectStatusSelect({ id, status }: { id: string; status: Prosp
 }
 
 /** WhatsApp chat, "send requirements" (moves the prospect forward) and delete. */
-export function ProspectRowActions({ id, name, contactName, phone, status }: { id: string; name: string; contactName: string | null; phone: string | null; status: ProspectStatus }) {
+export function ProspectRowActions({ id, name, contactName, phone, status, apiBase = ADMIN_API }: { id: string; name: string; contactName: string | null; phone: string | null; status: ProspectStatus; apiBase?: string }) {
   const router = useRouter();
   const [removing, setRemoving] = useState(false);
   const digits = phone ? normalizeWhatsAppPhone(phone) : "";
@@ -42,7 +44,7 @@ export function ProspectRowActions({ id, name, contactName, phone, status }: { i
   async function remove() {
     if (!window.confirm(`¿Eliminar el prospecto ${name}?`)) return;
     setRemoving(true);
-    const response = await fetch(`/api/admin/prospects/${id}`, { method: "DELETE" });
+    const response = await fetch(`${apiBase}/${id}`, { method: "DELETE" });
     setRemoving(false);
     if (!response.ok) return window.alert("No se pudo eliminar el prospecto.");
     router.refresh();
@@ -51,7 +53,7 @@ export function ProspectRowActions({ id, name, contactName, phone, status }: { i
   return (
     <>
       {digits && <a href={`https://wa.me/${digits}`} target="_blank" rel="noreferrer" title={`Abrir chat (${phone})`} aria-label={`Abrir chat con ${name}`} className="grid size-10 place-items-center rounded-md text-stone-500 hover:bg-emerald-50 hover:text-emerald-700"><MessageCircle size={17} /></a>}
-      <a href={requirements} target="_blank" rel="noreferrer" onClick={() => { if (canAdvance) void patchStatus(id, "requirements_sent").then(() => router.refresh()); }} title="Enviar requisitos por WhatsApp" aria-label={`Enviar requisitos a ${name}`} className="grid size-10 place-items-center rounded-md text-stone-500 hover:bg-amber-50 hover:text-amber-700"><ClipboardList size={17} /></a>
+      <a href={requirements} target="_blank" rel="noreferrer" onClick={() => { if (canAdvance) void patchStatus(id, "requirements_sent", apiBase).then(() => router.refresh()); }} title="Enviar requisitos por WhatsApp" aria-label={`Enviar requisitos a ${name}`} className="grid size-10 place-items-center rounded-md text-stone-500 hover:bg-amber-50 hover:text-amber-700"><ClipboardList size={17} /></a>
       <button type="button" disabled={removing} onClick={remove} title="Eliminar" aria-label={`Eliminar ${name}`} className="grid size-10 place-items-center rounded-md text-red-600 hover:bg-red-50 disabled:opacity-60">{removing ? <LoaderCircle className="animate-spin" size={16} /> : <Trash2 size={17} />}</button>
     </>
   );

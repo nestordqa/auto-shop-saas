@@ -2,7 +2,9 @@ import { Search } from "lucide-react";
 import Link from "next/link";
 
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
+import { OrderCreateFlowModal } from "@/components/owner/order-create-flow-modal";
 import { TablePagination } from "@/components/ui/table-pagination";
+import { loadOrderCreateOptions } from "@/lib/order-create-options";
 import { formatAppointmentDateTime } from "@/lib/appointments";
 import { requireMechanic } from "@/lib/auth/require-mechanic";
 import { compareOrdersForWork } from "@/lib/order-status";
@@ -28,11 +30,19 @@ export default async function MechanicDashboardPage({
         </p>
       </div>
     );
-  const { data: orders } = await dataClient
+  // Reception mechanics also see every appointment of their branch waiting to be received.
+  const ordersQuery = dataClient
     .from("orders")
     .select("id, vehicle_id, status, appointment_date")
-    .eq("mechanic_id", mechanic.id)
-    .order("appointment_date", { ascending: false });
+    .eq("garage_id", mechanic.garage_id);
+  const { data: orders } = await (mechanic.can_receive
+    ? ordersQuery.or(`mechanic_id.eq.${mechanic.id},and(branch_id.eq.${mechanic.branch_id},status.eq.por_ingresar)`)
+    : ordersQuery.eq("mechanic_id", mechanic.id)
+  ).order("appointment_date", { ascending: false });
+  // Reception mechanics create orders for their branch with the same flow as the owner.
+  const [createOptions, { data: garage }] = mechanic.can_receive
+    ? await Promise.all([loadOrderCreateOptions(dataClient, mechanic.garage_id, mechanic.branch_id), dataClient.from("garages").select("name, slug").eq("id", mechanic.garage_id).maybeSingle()])
+    : [null, { data: null }];
   const vehicleIds = (orders ?? []).map((order) => order.vehicle_id);
   const { data: vehicles } = vehicleIds.length
     ? await dataClient
@@ -70,16 +80,21 @@ export default async function MechanicDashboardPage({
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
-      <header>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
         <p className="text-xs font-bold uppercase text-[#d9341d]">
           Área técnica
         </p>
         <h1 className="mt-2 font-display text-3xl font-bold sm:text-4xl">
-          Mis órdenes asignadas
+          {mechanic.can_receive ? "Recepción y mis órdenes" : "Mis órdenes asignadas"}
         </h1>
         <p className="mt-1 text-sm text-stone-600">
-          Solo se muestran trabajos asignados a tu perfil.
+          {mechanic.can_receive
+            ? "Tus trabajos asignados y las citas de tu sucursal por recibir: haz el ingreso y asigna el mecánico."
+            : "Solo se muestran trabajos asignados a tu perfil."}
         </p>
+        </div>
+        {createOptions && garage && <OrderCreateFlowModal garage={{ name: garage.name, slug: garage.slug }} {...createOptions} orderBasePath="/dashboard/mechanic/orders" />}
       </header>
       <form className="mt-6 flex gap-2 rounded-lg border border-stone-200 bg-white p-3">
         <div className="relative min-w-0 flex-1">

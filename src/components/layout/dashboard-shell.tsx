@@ -12,6 +12,7 @@ import {
   FileSignature,
   Gauge,
   LogOut,
+  Megaphone,
   Menu,
   ReceiptText,
   Settings,
@@ -46,6 +47,7 @@ const roleLabels: Record<AppRole, string> = {
   garage_manager: "Encargado del taller",
   mechanic: "Área técnica",
   client: "Mis vehículos",
+  seller: "Vendedor TorkeOS",
 };
 
 const navigation = {
@@ -53,6 +55,7 @@ const navigation = {
     { label: "Resumen", href: "/dashboard/admin", icon: Gauge },
     { label: "Prospectos", href: "/dashboard/admin/prospects", icon: Target },
     { label: "Talleres", href: "/dashboard/admin/garages", icon: Wrench },
+    { label: "Vendedores", href: "/dashboard/admin/sellers", icon: Megaphone },
     { label: "Usuarios", href: "/dashboard/admin/users", icon: Users },
     { label: "Catálogo", href: "/dashboard/admin/catalog", icon: CarFront },
     { label: "Reparaciones", href: "/dashboard/admin/repairs", icon: Wrench },
@@ -81,12 +84,17 @@ const navigation = {
   ],
   mechanic: [
     { label: "Diagnóstico", href: "/dashboard/mechanic", icon: ClipboardList },
-    { label: "Agenda", href: "/dashboard/mechanic#agenda", icon: CalendarDays },
+    { label: "Agenda", href: "/dashboard/mechanic/agenda", icon: CalendarDays },
   ],
   client: [
     { label: "Inicio", href: "/dashboard/client", icon: Gauge },
     { label: "Vehículos", href: "/dashboard/client/vehicles", icon: CarFront },
     { label: "Citas", href: "/dashboard/client/appointments", icon: CalendarDays },
+  ],
+  seller: [
+    { label: "Resumen", href: "/dashboard/seller", icon: Gauge },
+    { label: "Prospectos", href: "/dashboard/seller/prospects", icon: Target },
+    { label: "Talleres", href: "/dashboard/seller/garages", icon: Wrench },
   ],
 } satisfies Record<AppRole, { label: string; href: string; icon: typeof Gauge }[]>;
 
@@ -152,7 +160,7 @@ export function DashboardShell({ children, role, userName, garageContext }: Dash
       </header>
 
       {menuOpen && (
-        <div className="fixed inset-x-0 top-16 z-30 max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-b border-stone-200 bg-white p-4 shadow-xl md:hidden">
+        <div className="fixed inset-x-0 top-16 bottom-0 z-50 overflow-y-auto overscroll-contain bg-white p-4 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-xl md:hidden">
           <p className="mb-3 text-xs font-semibold uppercase text-stone-500">{roleLabels[role]}</p>
           <nav className="grid gap-2">
             {items.map(({ label, href, icon: Icon }) => (

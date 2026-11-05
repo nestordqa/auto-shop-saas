@@ -7,8 +7,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { GarageStaffRole } from "@/types/domain";
 
-/** `branchId` is set for managers, who only work at their branch; owners see every branch (null). */
-export type StaffGarage = { garageId: string; branchId: string | null; role: GarageStaffRole };
+/**
+ * `branchId` is set for managers (and reception mechanics), who only work at their branch; owners see every branch (null).
+ * role "mechanic" only appears on routes that pass `allowReception`.
+ */
+export type StaffGarage = { garageId: string; branchId: string | null; role: GarageStaffRole | "mechanic" };
 
 /** Resolves the garage an owner or an active manager works for. */
 export async function getStaffGarage(dataClient: SupabaseClient, user: User): Promise<StaffGarage | null> {
@@ -37,19 +40,26 @@ type StaffRequest =
  * Shared guard for API routes used by owners and managers. Garages with LOCK_AFTER_DAYS of arrears are refused
  * (402) except on `allowLocked` routes, which the owner needs to pay.
  */
-export async function authorizeStaffRequest({ ownerOnly = false, allowLocked = false, unavailable = "La operación no está configurada." } = {}): Promise<StaffRequest> {
+export async function authorizeStaffRequest({ ownerOnly = false, allowLocked = false, allowReception = false, unavailable = "La operación no está configurada." } = {}): Promise<StaffRequest> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, response: NextResponse.json({ error: "Sesión no válida." }, { status: 401 }) };
 
   const role = user.app_metadata.role;
-  if (role !== "garage_owner" && !(role === "garage_manager" && !ownerOnly)) {
+  const reception = allowReception && !ownerOnly && role === "mechanic";
+  if (role !== "garage_owner" && !(role === "garage_manager" && !ownerOnly) && !reception) {
     return { ok: false, response: NextResponse.json({ error: "Acceso restringido." }, { status: 403 }) };
   }
 
   const admin = createAdminClient();
   if (!admin) return { ok: false, response: NextResponse.json({ error: unavailable }, { status: 503 }) };
-  const staff = await getStaffGarage(admin, user);
+  let staff = await getStaffGarage(admin, user);
+  if (reception) {
+    // Trusted mechanic (can_receive): acts like a manager pinned to their branch.
+    const { data } = await admin.from("mechanics").select("garage_id, branch_id").eq("profile_id", user.id).eq("is_active", true).eq("can_receive", true).maybeSingle();
+    if (!data) return { ok: false, response: NextResponse.json({ error: "Solo un mecánico de recepción puede hacer esto." }, { status: 403 }) };
+    staff = { garageId: data.garage_id, branchId: data.branch_id, role: "mechanic" };
+  }
   if (!staff) return { ok: false, response: NextResponse.json({ error: "Tu cuenta no tiene un taller asignado." }, { status: 403 }) };
   if (!allowLocked && (await getGarageBillingStatus(staff.garageId)).locked) {
     return { ok: false, response: NextResponse.json({ error: `El acceso del taller está suspendido por más de ${LOCK_AFTER_DAYS} días de mora. El administrador debe ponerse al día desde Facturación.` }, { status: 402 }) };

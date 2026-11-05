@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import { authorizeStaffRequest, resolveStaffBranch } from "@/lib/auth/garage-staff";
 
-// Toggle (owner, or the manager of the mechanic's branch) or move to another branch (owner only).
-const updateSchema = z.union([z.object({ isActive: z.boolean() }).strict(), z.object({ branchId: z.uuid() }).strict()]);
+// Toggle active / reception (owner, or the manager of the mechanic's branch) or move to another branch (owner only).
+const updateSchema = z.union([z.object({ isActive: z.boolean() }).strict(), z.object({ canReceive: z.boolean() }).strict(), z.object({ branchId: z.uuid() }).strict()]);
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ mechanicId: string }> }) {
   const { mechanicId } = await params;
@@ -16,13 +16,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ me
   const { admin } = auth;
   const garage = { id: auth.staff.garageId };
 
-  let update: { is_active: boolean } | { branch_id: string };
+  let update: { is_active: boolean } | { can_receive: boolean } | { branch_id: string };
   if ("branchId" in parsed.data) {
     if (auth.staff.role !== "garage_owner") return NextResponse.json({ error: "Solo el administrador puede mover mecánicos entre sucursales." }, { status: 403 });
     const branchId = await resolveStaffBranch(admin, auth.staff, parsed.data.branchId);
     if (!branchId) return NextResponse.json({ error: "La sucursal seleccionada no es válida." }, { status: 400 });
     update = { branch_id: branchId };
-  } else update = { is_active: parsed.data.isActive };
+  } else if ("canReceive" in parsed.data) update = { can_receive: parsed.data.canReceive };
+  else update = { is_active: parsed.data.isActive };
 
   let query = admin.from("mechanics").update(update).eq("id", mechanicId).eq("garage_id", garage.id);
   if (auth.staff.branchId) query = query.eq("branch_id", auth.staff.branchId);

@@ -12,7 +12,9 @@ import type { AppRole, OrderStatus } from "@/types/domain";
 
 /**
  * Who receives what (never the person who triggered the event):
- * - Mechanic: only when an order is assigned to them, while active in that garage.
+ * - Mechanic: when an order is assigned to them and when its vehicle is checked in — while active in that garage.
+ * - Reception mechanics (can_receive) of the order's branch: new appointment, check-in, and a reminder
+ *   30 minutes before each appointment (also sent to the assigned mechanic).
  * - Owner + active managers of the order's garage: new appointment, check-in, client budget decision,
  *   and mechanic progress (diagnosis finished, testing, ready).
  * - Client: only for orders of their own vehicles.
@@ -65,9 +67,22 @@ async function garageStaffIds(admin: SupabaseClient, garageId: string, branchId:
   return [garage?.owner_id, ...(managers ?? []).map((manager) => manager.profile_id)].filter((id): id is string => Boolean(id));
 }
 
+/** Active reception mechanics (can_receive) of the branch. */
+async function receptionMechanicIds(admin: SupabaseClient, garageId: string, branchId: string) {
+  const { data } = await admin.from("mechanics").select("profile_id").eq("garage_id", garageId).eq("branch_id", branchId).eq("is_active", true).eq("can_receive", true);
+  return (data ?? []).map((row) => row.profile_id as string);
+}
+
 async function profileName(admin: SupabaseClient, userId: string) {
   const { data } = await admin.from("profiles").select("full_name").eq("id", userId).maybeSingle();
   return (data?.full_name as string | undefined) ?? "El mecánico";
+}
+
+/** Profile of the order's mechanic, if still active in the order's garage. */
+async function activeMechanicProfile(admin: SupabaseClient, order: OrderContext) {
+  if (!order.mechanicId) return null;
+  const { data } = await admin.from("mechanics").select("profile_id").eq("id", order.mechanicId).eq("garage_id", order.garageId).eq("is_active", true).maybeSingle();
+  return (data?.profile_id as string | undefined) ?? null;
 }
 
 const staffUrl = (order: OrderContext) => `/dashboard/owner/orders/${order.id}`;
@@ -99,6 +114,9 @@ export function notifyAppointmentCreated(orderId: string, actor: Actor) {
     await deliver(admin, [{
       userIds: await garageStaffIds(admin, order.garageId, order.branchId),
       payload: { title: "Nueva cita agendada", body: `${order.vehicleLabel} · ${formatAppointmentDateTime(order.appointmentDate, "long")}`, url: staffUrl(order), tag: `appointment-${order.id}` },
+    }, {
+      userIds: await receptionMechanicIds(admin, order.garageId, order.branchId),
+      payload: { title: "Nueva cita por recibir", body: `${order.vehicleLabel} · ${formatAppointmentDateTime(order.appointmentDate, "long")}`, url: `/dashboard/mechanic/orders/${order.id}`, tag: `appointment-${order.id}` },
     }], actor);
   });
 }
@@ -113,7 +131,7 @@ export function notifyMechanicAssigned(orderId: string, mechanicId: string, acto
     if (!order || !mechanic || order.mechanicId !== mechanicId || mechanic.garage_id !== order.garageId) return;
     await deliver(admin, [{
       userIds: [mechanic.profile_id],
-      payload: { title: "Se te asignó un vehículo", body: `Orden ${order.reference} · ${order.vehicleLabel} · ${formatAppointmentDateTime(order.appointmentDate)}`, url: `/dashboard/mechanic/orders/${order.id}`, tag: `assigned-${order.id}` },
+      payload: { title: "Nueva cita asignada", body: `Orden ${order.reference} · ${order.vehicleLabel} · cita ${formatAppointmentDateTime(order.appointmentDate, "long")}`, url: `/dashboard/mechanic/orders/${order.id}`, tag: `assigned-${order.id}` },
     }], actor);
   });
 }
@@ -202,6 +220,11 @@ export function notifyStatusChange(orderId: string, from: OrderStatus, to: Order
     const staff = () => garageStaffIds(admin, order.garageId, order.branchId);
     if (from === "por_ingresar" && to === "ingresado") {
       messages.push({ userIds: await staff(), payload: { title: "Vehículo ingresado", body: `Orden ${order.reference} · ${order.vehicleLabel}`, url: staffUrl(order), tag: `status-${order.id}` } });
+      const reception = await receptionMechanicIds(admin, order.garageId, order.branchId);
+      if (reception.length) messages.push({ userIds: reception, payload: { title: "Vehículo ingresado", body: `Orden ${order.reference} · ${order.vehicleLabel}`, url: `/dashboard/mechanic/orders/${order.id}`, tag: `status-${order.id}` } });
+      // The assigned mechanic hears that their vehicle arrived (deliver() skips whoever did the check-in).
+      const mechanicProfile = await activeMechanicProfile(admin, order);
+      if (mechanicProfile && !reception.includes(mechanicProfile)) messages.push({ userIds: [mechanicProfile], payload: { title: "Tu vehículo ya ingresó", body: `Orden ${order.reference} · ${order.vehicleLabel} está en el taller.`, url: `/dashboard/mechanic/orders/${order.id}`, tag: `checkin-${order.id}` } });
     } else if (actor.role === "mechanic" && (to === "diagnosticado" || to === "en_prueba" || to === "listo_para_entregar")) {
       const name = await profileName(admin, actor.id);
       const title = to === "diagnosticado" ? "Diagnóstico finalizado" : to === "en_prueba" ? "Vehículo en prueba" : "Vehículo listo para entregar";
@@ -220,7 +243,7 @@ export async function sendScheduledReminders(admin: SupabaseClient, now = new Da
   const caracas = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Caracas", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" }).formatToParts(now);
   const part = (type: Intl.DateTimeFormatPartTypes) => caracas.find((item) => item.type === type)?.value ?? "";
   const today = `${part("year")}-${part("month")}-${part("day")}`;
-  const sent = { appointment: 0, budget: 0, pickup: 0 };
+  const sent = { appointment: 0, mechanic: 0, budget: 0, pickup: 0 };
 
   async function claim(orderId: string, kind: string, sentOn: string) {
     const { data } = await admin.from("notification_log").upsert({ order_id: orderId, kind, sent_on: sentOn }, { onConflict: "order_id,kind,sent_on", ignoreDuplicates: true }).select("id");
@@ -238,6 +261,23 @@ export async function sendScheduledReminders(admin: SupabaseClient, now = new Da
     if (!order) continue;
     await sendPush(admin, [order.clientId], { title: "Tu cita es en 1 hora", body: `${order.vehicleLabel} · ${formatAppointmentDateTime(order.appointmentDate)} en ${order.garageName}.`, url: CLIENT_URL, tag: `reminder-${order.id}` });
     sent.appointment += 1;
+  }
+
+  // Reception mechanics of the branch + the assigned mechanic, at least 30 minutes before
+  // (job every 15 min: appointments in the next 45 min → 30–45 min ahead).
+  const { data: soon } = await admin.from("orders").select("id")
+    .eq("status", "por_ingresar")
+    .gt("appointment_date", now.toISOString())
+    .lte("appointment_date", new Date(now.getTime() + 45 * 60_000).toISOString());
+  for (const { id } of soon ?? []) {
+    if (!(await claim(id, "mechanic_appointment_reminder", today))) continue;
+    const order = await loadOrderContext(admin, id);
+    if (!order) continue;
+    const assignedProfile = await activeMechanicProfile(admin, order);
+    const recipients = [...new Set([...(await receptionMechanicIds(admin, order.garageId, order.branchId)), ...(assignedProfile ? [assignedProfile] : [])])];
+    if (!recipients.length) continue;
+    await sendPush(admin, recipients, { title: "Cita en 30 minutos", body: `${order.vehicleLabel} · ${formatAppointmentDateTime(order.appointmentDate)}. Prepárate para recibirlo.`, url: `/dashboard/mechanic/orders/${order.id}`, tag: `mechanic-reminder-${order.id}` });
+    sent.mechanic += 1;
   }
 
   // Daily at 10:00 (Caracas) while the client has not decided the budget or picked up the vehicle.

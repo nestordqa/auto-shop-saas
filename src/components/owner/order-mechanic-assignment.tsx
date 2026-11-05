@@ -6,7 +6,8 @@ import { useState, type FormEvent } from "react";
 
 type MechanicOption = { id: string; name: string; specialty: string };
 
-export function OrderMechanicAssignment({ orderId, currentMechanicId, mechanics, disabled }: { orderId: string; currentMechanicId: string | null; mechanics: MechanicOption[]; disabled: boolean }) {
+/** `apiBase` is "/api/mechanic/orders" when a reception mechanic assigns from their panel. */
+export function OrderMechanicAssignment({ orderId, currentMechanicId, mechanics, disabled, apiBase = "/api/owner/orders" }: { orderId: string; currentMechanicId: string | null; mechanics: MechanicOption[]; disabled: boolean; apiBase?: string }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
@@ -16,7 +17,7 @@ export function OrderMechanicAssignment({ orderId, currentMechanicId, mechanics,
     setPending(true);
     setError(undefined);
     const mechanicId = String(new FormData(event.currentTarget).get("mechanicId") ?? "") || null;
-    const response = await fetch(`/api/owner/orders/${orderId}/mechanic`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mechanicId }) });
+    const response = await fetch(`${apiBase}/${orderId}/mechanic`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mechanicId }) });
     const result = await response.json() as { error?: string };
     setPending(false);
     if (!response.ok) return setError(result.error ?? "No se pudo asignar el mecánico.");

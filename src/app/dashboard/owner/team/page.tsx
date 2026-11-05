@@ -17,7 +17,7 @@ export default async function OwnerTeamPage({ searchParams }: { searchParams: Pr
 
   const isOwner = staffRole === "garage_owner";
   // Managers only see the mechanics of their branch.
-  let mechanicsQuery = dataClient.from("mechanics").select("id, profile_id, specialty, is_active, branch_id").eq("garage_id", garage.id);
+  let mechanicsQuery = dataClient.from("mechanics").select("id, profile_id, specialty, is_active, can_receive, branch_id").eq("garage_id", garage.id);
   if (staffBranchId) mechanicsQuery = mechanicsQuery.eq("branch_id", staffBranchId);
   const activeBranches = branches.filter((branch) => branch.is_active).map((branch) => ({ id: branch.id, name: branch.name }));
   const [{ data: mechanicRows }, { data: managerRows }] = await Promise.all([
@@ -31,7 +31,7 @@ export default async function OwnerTeamPage({ searchParams }: { searchParams: Pr
   const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
   const mechanics = (mechanicRows ?? []).map((mechanic) => {
     const profile = profileById.get(mechanic.profile_id);
-    return { id: mechanic.id, fullName: profile?.full_name ?? "Mecánico", phone: profile?.phone ?? null, documentId: profile?.document_id ?? null, specialty: mechanic.specialty as string, isActive: mechanic.is_active, branchId: mechanic.branch_id as string };
+    return { id: mechanic.id, fullName: profile?.full_name ?? "Mecánico", phone: profile?.phone ?? null, documentId: profile?.document_id ?? null, specialty: mechanic.specialty as string, isActive: mechanic.is_active, canReceive: Boolean(mechanic.can_receive), branchId: mechanic.branch_id as string };
   });
   const managers = (managerRows ?? []).map((manager) => {
     const profile = profileById.get(manager.profile_id);

@@ -9,7 +9,7 @@ import { PROSPECT_SOURCES, PROSPECT_STATUS_LABELS, PROSPECT_STATUSES, type Prosp
 const input = "min-h-12 rounded-md border border-stone-300 px-4 font-normal";
 
 /** Create a prospect, or edit one when `prospect` is given. */
-export function ProspectFormModal({ prospect }: { prospect?: Prospect }) {
+export function ProspectFormModal({ prospect, apiBase = "/api/admin/prospects" }: { prospect?: Prospect; apiBase?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<ProspectStatus>(prospect?.status ?? "new");
@@ -20,7 +20,7 @@ export function ProspectFormModal({ prospect }: { prospect?: Prospect }) {
     event.preventDefault();
     setPending(true);
     setError(undefined);
-    const response = await fetch(prospect ? `/api/admin/prospects/${prospect.id}` : "/api/admin/prospects", {
+    const response = await fetch(prospect ? `${apiBase}/${prospect.id}` : apiBase, {
       method: prospect ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))),

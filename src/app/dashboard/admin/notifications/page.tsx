@@ -5,7 +5,7 @@ import { isPushConfigured } from "@/lib/push";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AppRole } from "@/types/domain";
 
-const roleLabels: Record<AppRole, string> = { admin: "Admin", garage_owner: "Admin. de taller", garage_manager: "Encargado", mechanic: "Mecánico", client: "Cliente" };
+const roleLabels: Record<AppRole, string> = { admin: "Admin", garage_owner: "Admin. de taller", garage_manager: "Encargado", mechanic: "Mecánico", client: "Cliente", seller: "Vendedor" };
 
 export default async function NotificationsPage() {
   await requireRole(["admin"]);
