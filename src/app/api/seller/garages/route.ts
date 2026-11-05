@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     prospectId = data?.id ?? null;
   }
 
-  const owner = await createOwnerAccount(auth.admin, { ...input, password: input.temporaryPassword });
+  const owner = await createOwnerAccount(auth.admin, { ...input, password: input.temporaryPassword, welcome: true });
   if ("error" in owner) return NextResponse.json({ error: owner.error }, { status: 400 });
   const result = await insertGarage(auth.admin, { ownerId: owner.id, fields: input, start: "trial", createdBy: auth.user.id, source: "seller", sellerId: auth.seller.id, couponCode: auth.seller.coupon_code, prospectId });
   if ("error" in result) {

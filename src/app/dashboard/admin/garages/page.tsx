@@ -4,6 +4,7 @@ import Link from "next/link";
 import { GarageBranchesButton } from "@/components/admin/garage-branches-button";
 import { GarageCreateModal } from "@/components/admin/garage-create-modal";
 import { RequirementsShareModal } from "@/components/admin/requirements-share-modal";
+import { getLocationOptions } from "@/lib/locations-data";
 import { getSpecialties } from "@/lib/specialties-data";
 import { createAdminClient as createSpecialtiesClient } from "@/lib/supabase/admin";
 import { GarageDeleteButton } from "@/components/admin/garage-delete-button";
@@ -54,9 +55,10 @@ export default async function GaragesPage({ searchParams }: { searchParams: Prom
   const paginatedGarages = garages.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const branchesByGarage = await getBranchesByGarage(supabase, paginatedGarages.map((garage) => garage.id));
 
-  const specialties = (await getSpecialties(createSpecialtiesClient())).map(({ key, label }) => ({ key, label }));
+  const [specialtyRows, states] = await Promise.all([getSpecialties(createSpecialtiesClient()), getLocationOptions(supabase)]);
+  const specialties = specialtyRows.map(({ key, label }) => ({ key, label }));
   return <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
-    <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase text-[#d9341d]">Administración</p><h1 className="mt-2 font-display text-3xl font-bold sm:text-4xl">Talleres</h1><p className="mt-1 text-sm text-stone-600">Sedes, responsables y carga operativa.</p></div><div className="flex flex-wrap gap-2"><RequirementsShareModal /><GarageCreateModal owners={owners} prospects={prospects} specialties={specialties} sellers={sellers.filter((seller) => seller.isActive)} /></div></header>
+    <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase text-[#d9341d]">Administración</p><h1 className="mt-2 font-display text-3xl font-bold sm:text-4xl">Talleres</h1><p className="mt-1 text-sm text-stone-600">Sedes, responsables y carga operativa.</p></div><div className="flex flex-wrap gap-2"><RequirementsShareModal /><GarageCreateModal owners={owners} prospects={prospects} specialties={specialties} sellers={sellers.filter((seller) => seller.isActive)} states={states} /></div></header>
     <section className="mt-6 grid gap-3 sm:grid-cols-3"><Metric label="Talleres" value={garages.length} icon={Building2} /><Metric label="Mecánicos activos" value={mechanics.length} icon={Users} /><Metric label="Órdenes abiertas" value={openOrders.length} icon={ClipboardList} /></section>
     <form className="mt-5 grid gap-2 rounded-lg border border-stone-200 bg-white p-3 shadow-sm sm:grid-cols-[minmax(0,1fr)_auto_auto]"><div className="relative min-w-0"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={19} /><input name="q" defaultValue={q} placeholder="Buscar por nombre o dirección" className="min-h-12 w-full rounded-md border border-stone-300 pl-10 pr-4" /></div><button className="min-h-12 rounded-md bg-stone-900 px-5 font-bold text-white">Buscar</button>{q && <Link href="/dashboard/admin/garages" className="flex min-h-12 items-center justify-center gap-2 rounded-md border border-stone-300 px-4 font-bold text-stone-700"><RotateCcw size={18} /> Limpiar</Link>}</form>
     <div className="mt-4 grid gap-3 md:hidden">{paginatedGarages.map((garage) => { const owner = ownerById.get(garage.owner_id); return <article key={garage.id} className="min-w-0 rounded-lg border border-stone-200 bg-white p-4 shadow-sm">

@@ -2,6 +2,8 @@ import type { VehicleIntake } from "@/lib/intake";
 import { branchLabel, getBranchesByGarage } from "@/lib/branches";
 import { resolveClientGarage, visitedGarageSlugs } from "@/lib/client-garage";
 import { getOrderIntakes } from "@/lib/intake-data";
+import { locationLabel } from "@/lib/locations";
+import { getLocationOptions } from "@/lib/locations-data";
 import { canPayOrder, type OrderPayment, type PaymentMethod } from "@/lib/payments";
 import { getOrderPayments, getPaymentMethods } from "@/lib/payments-data";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -42,13 +44,15 @@ export async function loadClientPortal(userId: string) {
     ? await dataClient.from("orders").select("id, vehicle_id, garage_id, branch_id, status, appointment_date").in("vehicle_id", vehicleIds).order("created_at", { ascending: false })
     : { data: [] };
   const orderIds = (orderRows ?? []).map(({ id }) => id);
-  const [{ data: budgets }, { data: diagnostics }, { data: history }, { data: garages }, intakes, homeGarage] = await Promise.all([
+  const [{ data: budgets }, { data: diagnostics }, { data: history }, { data: garages }, intakes, homeGarage, { data: profile }, locations] = await Promise.all([
     orderIds.length ? dataClient.from("budgets").select("order_id, includes_parts, total_amount, approved").in("order_id", orderIds) : Promise.resolve({ data: [] }),
     orderIds.length ? dataClient.from("diagnostics").select("order_id, description, price, is_completed, component, component_label, intervention_type, part_brand").in("order_id", orderIds).order("created_at") : Promise.resolve({ data: [] }),
     orderIds.length ? dataClient.from("order_status_history").select("order_id, status, changed_at").in("order_id", orderIds).order("changed_at") : Promise.resolve({ data: [] }),
-    dataClient.from("garages").select("id, name, slug, address, specialty").order("name"),
+    dataClient.from("garages").select("id, name, slug, address, specialty, state_id, city_id").order("name"),
     getOrderIntakes(dataClient, orderIds),
     admin ? resolveClientGarage(admin) : Promise.resolve(null),
+    dataClient.from("profiles").select("state_id, city_id").eq("id", userId).maybeSingle(),
+    getLocationOptions(dataClient),
   ]);
   const visitedSlugs = await visitedGarageSlugs();
 
@@ -96,8 +100,11 @@ export async function loadClientPortal(userId: string) {
       const openStatus = orders.find((order) => order.vehicleId === vehicle.id && order.status !== "entregado")?.status;
       return { id: vehicle.id, label: vehicleLabel(vehicle), openOrderLabel: openStatus ? ORDER_STATUS_LABELS[openStatus] : null };
     }),
-    garages: (garages ?? []).map((garage) => ({ id: garage.id, label: garage.name, address: garage.address, specialty: garage.specialty, branches: (branchesByGarage.get(garage.id) ?? []).filter((branch) => branch.is_active).map((branch) => ({ id: branch.id, name: branch.name, address: branch.address })) })),
+    garages: (garages ?? []).map((garage) => ({ id: garage.id, label: garage.name, address: garage.address, specialty: garage.specialty, stateId: garage.state_id as string | null, cityId: garage.city_id as string | null, locationLabel: locationLabel(locations, { stateId: garage.state_id, cityId: garage.city_id }), branches: (branchesByGarage.get(garage.id) ?? []).filter((branch) => branch.is_active).map((branch) => ({ id: branch.id, name: branch.name, address: branch.address })) })),
     defaultGarageId: homeGarage?.id,
+    /** States and cities for the garage search, and where the client lives (city first, then state). */
+    locations,
+    clientLocation: profile ? { stateId: profile.state_id as string | null, cityId: profile.city_id as string | null } : null,
     /** Garages the client has used (link history on this device, then past orders): "Mis talleres frecuentes". */
     frequentGarageIds: [...new Set([
       ...(homeGarage ? [homeGarage.id] : []),

@@ -1,15 +1,18 @@
 "use client";
 
-import { Building2, Check, KeyRound, LoaderCircle, UserRound } from "lucide-react";
+import { Building2, Check, KeyRound, Link2, LoaderCircle, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent, type ReactNode } from "react";
 
 import { SpecialtyPicker } from "@/components/garage/specialty-picker";
+import { LocationFields } from "@/components/location/location-fields";
+import { BookingLinkCard } from "@/components/owner/booking-link-card";
 import { PasswordInput } from "@/components/ui/password-input";
+import type { LocationValue, StateOption } from "@/lib/locations";
 import type { SpecialtyOption } from "@/lib/mechanics";
 
 export type ProfileValues = { fullName: string; email: string; phone: string; phone2: string; documentId: string };
-export type GarageValues = { name: string; specialties: string[]; address: string; mapLocation: string };
+export type GarageValues = { name: string; specialties: string[]; address: string; mapLocation: string; stateId: string | null; cityId: string | null };
 
 const input = "min-h-12 w-full rounded-md border border-stone-300 bg-white px-4 font-normal";
 
@@ -45,9 +48,9 @@ function useSave(url: string, method: "PATCH" | "POST") {
   return { pending, saved, error, submit };
 }
 
-function Card({ icon, title, description, children }: { icon: ReactNode; title: string; description: string; children: ReactNode }) {
+function Card({ icon, title, description, children, id }: { icon: ReactNode; title: string; description: string; children: ReactNode; id?: string }) {
   return (
-    <section className="rounded-lg border border-stone-200 bg-white shadow-sm">
+    <section id={id} className="scroll-mt-20 rounded-lg border border-stone-200 bg-white shadow-sm">
       <header className="flex items-center gap-3 border-b border-stone-200 p-5">
         <span className="grid size-10 shrink-0 place-items-center rounded-md bg-stone-900 text-white">{icon}</span>
         <div><h2 className="text-lg font-bold">{title}</h2><p className="text-sm text-stone-500">{description}</p></div>
@@ -68,7 +71,8 @@ function SaveRow({ pending, saved, error, label }: { pending: boolean; saved: bo
   );
 }
 
-export function ProfileForm({ values }: { values: ProfileValues }) {
+/** `location` (clients): where they live, to show them the garages of their city first. */
+export function ProfileForm({ values, location }: { values: ProfileValues; location?: { states: StateOption[]; value: LocationValue } }) {
   const { pending, saved, error, submit } = useSave("/api/account", "PATCH");
   return (
     <Card icon={<UserRound size={20} />} title="Datos personales" description="Tu nombre y cómo contactarte.">
@@ -78,6 +82,7 @@ export function ProfileForm({ values }: { values: ProfileValues }) {
         <label className="grid gap-1 text-sm font-bold">Cédula / RIF<input name="documentId" defaultValue={values.documentId} className={input} /></label>
         <label className="grid gap-1 text-sm font-bold">Teléfono<input name="phone" type="tel" required defaultValue={values.phone} className={input} /></label>
         <label className="grid gap-1 text-sm font-bold">Teléfono alternativo (opcional)<input name="phone2" type="tel" defaultValue={values.phone2} className={input} /></label>
+        {location && <div className="grid gap-1 sm:col-span-2"><LocationFields states={location.states} defaultValue={location.value} labels /><span className="text-xs font-normal text-stone-500">Al agendar te mostramos primero los talleres de tu ciudad.</span></div>}
         <SaveRow pending={pending} saved={saved} error={error} label="Guardar datos" />
       </form>
     </Card>
@@ -87,7 +92,7 @@ export function ProfileForm({ values }: { values: ProfileValues }) {
 export function PasswordForm() {
   const { pending, saved, error, submit } = useSave("/api/account/password", "POST");
   return (
-    <Card icon={<KeyRound size={20} />} title="Contraseña" description="Cámbiala cuando quieras, sobre todo si recibiste una temporal.">
+    <Card id="password" icon={<KeyRound size={20} />} title="Contraseña" description="Cámbiala cuando quieras, sobre todo si recibiste una temporal.">
       <form onSubmit={(event) => submit(event, (form) => form.reset())} className="grid gap-4 p-5 sm:grid-cols-2">
         <label className="grid gap-1 text-sm font-bold">Contraseña actual<PasswordInput name="currentPassword" required autoComplete="current-password" className={input} /></label>
         <label className="grid gap-1 text-sm font-bold">Nueva contraseña<PasswordInput name="newPassword" required minLength={8} autoComplete="new-password" className={input} /></label>
@@ -97,7 +102,7 @@ export function PasswordForm() {
   );
 }
 
-export function GarageForm({ values, specialtyOptions }: { values: GarageValues; specialtyOptions: SpecialtyOption[] }) {
+export function GarageForm({ values, specialtyOptions, states }: { values: GarageValues; specialtyOptions: SpecialtyOption[]; states: StateOption[] }) {
   const { pending, saved, error, submit } = useSave("/api/owner/garage", "PATCH");
   return (
     <Card icon={<Building2 size={20} />} title="Datos del taller" description="Lo que ven tus clientes al reservar. Solo el administrador puede editarlos.">
@@ -105,9 +110,19 @@ export function GarageForm({ values, specialtyOptions }: { values: GarageValues;
         <label className="grid gap-1 text-sm font-bold sm:col-span-2">Nombre comercial<input name="name" required minLength={2} defaultValue={values.name} className={input} /></label>
         <div className="sm:col-span-2"><SpecialtyPicker options={specialtyOptions} defaultValue={values.specialties} /></div>
         <label className="grid gap-1 text-sm font-bold sm:col-span-2">Dirección<textarea name="address" required minLength={5} rows={2} defaultValue={values.address} className={`${input} resize-none py-3`} /><span className="text-xs font-normal text-stone-500">También actualiza la sucursal principal. Las demás sucursales se editan en Sucursales.</span></label>
+        <div className="sm:col-span-2"><LocationFields states={states} defaultValue={{ stateId: values.stateId, cityId: values.cityId }} labels /></div>
         <label className="grid gap-1 text-sm font-bold sm:col-span-2">Ubicación en el mapa (opcional)<input name="mapLocation" defaultValue={values.mapLocation} placeholder="URL de Google Maps o coordenadas" className={input} /></label>
         <SaveRow pending={pending} saved={saved} error={error} label="Guardar taller" />
       </form>
+    </Card>
+  );
+}
+
+/** Owners: the public booking link to share with clients. */
+export function BookingLinkSection({ url, garageName }: { url: string; garageName: string }) {
+  return (
+    <Card id="enlace" icon={<Link2 size={20} />} title="Enlace de reservas" description="Compártelo con tus clientes: crean su cuenta y agendan directo en tu taller.">
+      <div className="p-5"><BookingLinkCard url={url} garageName={garageName} /></div>
     </Card>
   );
 }

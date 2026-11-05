@@ -1,15 +1,19 @@
 "use client";
 
-import { CalendarSearch, CheckCircle2, LoaderCircle, MapPin, Plus, Wrench, X } from "lucide-react";
+import { CalendarSearch, CheckCircle2, LoaderCircle, MapPin, Plus, SlidersHorizontal, Wrench, X } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useState, type FormEvent } from "react";
 
+import type { LocationValue, StateOption } from "@/lib/locations";
 import { formatSlotTime } from "@/lib/schedule";
 
 type Option = { id: string; label: string };
 type BranchOption = { id: string; name: string; address: string };
 /** `branches` are the active branches (main first); with more than one the client picks where to book. */
-type GarageOption = Option & { address?: string | null; specialty?: string | null; branches?: BranchOption[] };
+type GarageOption = Option & { address?: string | null; specialty?: string | null; branches?: BranchOption[]; stateId?: string | null; cityId?: string | null; locationLabel?: string };
+/** Garage search: the client city, their state ("Ampliar búsqueda"), any state / city ("Búsqueda personalizada"), or everything when the client has no location. */
+type SearchMode = "city" | "state" | "custom" | "all";
 /** `openOrderLabel` marks a vehicle that already has an order in progress and cannot book another. */
 type VehicleOption = Option & { openOrderLabel?: string | null };
 
@@ -23,9 +27,12 @@ type AppointmentBookingProps = {
   defaultBranchId?: string;
   /** Garages the client already uses, most relevant first; with two or more they are offered as "Mis talleres frecuentes". */
   frequentGarageIds?: string[];
+  /** States and cities, and where the client lives: the garage search starts in their city. */
+  locations?: StateOption[];
+  clientLocation?: LocationValue | null;
 };
 
-export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultGarageId, defaultBranchId, frequentGarageIds = [] }: AppointmentBookingProps) {
+export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultGarageId, defaultBranchId, frequentGarageIds = [], locations = [], clientLocation }: AppointmentBookingProps) {
   const router = useRouter();
   const [slots, setSlots] = useState<string[]>([]);
   const [selectedTime, setSelectedTime] = useState("");
@@ -38,6 +45,11 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
   const [garageId, setGarageId] = useState(lockedGarageId ?? defaultGarageId ?? (frequent.length ? frequent[0].id : ""));
   const [pickerOpen, setPickerOpen] = useState(false);
   const [branchId, setBranchId] = useState(defaultBranchId ?? "");
+  const homeState = locations.find((state) => state.id === clientLocation?.stateId);
+  const homeCity = homeState?.cities.find((city) => city.id === clientLocation?.cityId);
+  const [searchMode, setSearchMode] = useState<SearchMode>(homeCity ? "city" : homeState ? "state" : "all");
+  const [customStateId, setCustomStateId] = useState(homeState?.id ?? "");
+  const [customCityId, setCustomCityId] = useState("");
 
   async function loadSlots(form: HTMLFormElement) {
     const data = new FormData(form);
@@ -87,6 +99,33 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
   const selectedBranch = branches.find(({ id }) => id === branchId) ?? branches[0];
   const otherGarages = garages.filter(({ id }) => id !== garageId);
 
+  const customState = locations.find((state) => state.id === customStateId);
+  const customCity = customState?.cities.find((city) => city.id === customCityId);
+  const inSearch = (item: GarageOption) => searchMode === "city" ? item.cityId === homeCity?.id
+    : searchMode === "state" ? item.stateId === homeState?.id
+    : searchMode === "custom" ? (!customState || item.stateId === customState.id) && (!customCity || item.cityId === customCity.id)
+    : true;
+  const searchPlace = searchMode === "city" ? homeCity?.name : searchMode === "state" ? `el estado ${homeState?.name}` : searchMode === "custom" ? (customCity ? `${customCity.name}, ${customState?.name}` : customState ? `el estado ${customState.name}` : "toda Venezuela") : "toda Venezuela";
+  const found = garages.filter(inSearch);
+  // The selected garage stays visible even if it is outside the search.
+  const searchable = garages.filter((item) => inSearch(item) || item.id === garageId);
+  const searchBar = locations.length > 0 && (
+    <div className="grid gap-2 rounded-md border border-stone-200 bg-stone-50 p-3 text-xs font-normal">
+      <p className="flex items-center gap-1 font-semibold text-stone-700"><MapPin size={14} className="shrink-0" /> {found.length ? `${found.length} ${found.length === 1 ? "taller" : "talleres"} en ${searchPlace}` : `No hay talleres en ${searchPlace}.`}</p>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 font-bold text-[#d9341d]">
+        {searchMode === "city" && <button type="button" onClick={() => setSearchMode("state")} className="hover:underline">Ampliar búsqueda a {homeState?.name}</button>}
+        {searchMode !== "custom" && <button type="button" onClick={() => setSearchMode("custom")} className="flex items-center gap-1 hover:underline"><SlidersHorizontal size={13} /> Búsqueda personalizada</button>}
+        {searchMode !== "city" && homeCity && <button type="button" onClick={() => setSearchMode("city")} className="hover:underline">Solo {homeCity.name}</button>}
+        {searchMode === "custom" && !homeCity && homeState && <button type="button" onClick={() => setSearchMode("state")} className="hover:underline">Solo {homeState.name}</button>}
+        {!homeState && <Link href="/dashboard/client/settings" className="hover:underline">Indica tu ciudad para ver primero los talleres cercanos</Link>}
+      </div>
+      {searchMode === "custom" && <div className="grid gap-2 sm:grid-cols-2">
+        <select value={customStateId} onChange={(event) => { setCustomStateId(event.target.value); setCustomCityId(""); }} aria-label="Estado" className="min-h-11 w-full min-w-0 rounded-md border border-stone-300 bg-white px-3 text-sm"><option value="">Todos los estados</option>{locations.map((state) => <option key={state.id} value={state.id}>{state.name}</option>)}</select>
+        <select value={customCityId} onChange={(event) => setCustomCityId(event.target.value)} disabled={!customState} aria-label="Ciudad" className="min-h-11 w-full min-w-0 rounded-md border border-stone-300 bg-white px-3 text-sm disabled:bg-stone-100"><option value="">Todas las ciudades</option>{customState?.cities.map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}</select>
+      </div>}
+    </div>
+  );
+
   function chooseGarage(id: string) {
     setGarageId(id);
     setBranchId("");
@@ -111,7 +150,7 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
                     <span className="min-w-0">
                       <span className="block truncate font-bold text-stone-900">{item.label}</span>
                       {item.specialty && <span className="block truncate text-xs font-semibold text-[#d9341d]">{item.specialty}</span>}
-                      {item.address && <span className="block truncate text-xs text-stone-500">{item.address}</span>}
+                      {(item.locationLabel || item.address) && <span className="block truncate text-xs text-stone-500">{item.locationLabel || item.address}</span>}
                     </span>
                   </button>
                 ))}
@@ -129,7 +168,10 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
               )}
             </>
           ) : (
-            <select value={garageId} onChange={(event) => chooseGarage(event.target.value)} className="min-h-12 w-full min-w-0 truncate rounded-md border border-stone-300 bg-white px-3 font-normal" required><option value="">Seleccionar</option>{garages.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select>
+            <>
+              {searchBar}
+              <select value={garageId} onChange={(event) => chooseGarage(event.target.value)} className="min-h-12 w-full min-w-0 truncate rounded-md border border-stone-300 bg-white px-3 font-normal" required><option value="">{found.length ? "Seleccionar" : "Sin talleres en esta zona"}</option>{searchable.map((item) => <option key={item.id} value={item.id}>{item.label}{item.locationLabel ? ` · ${item.locationLabel}` : ""}</option>)}</select>
+            </>
           )}
         </div>
         {branches.length > 1 && (
@@ -153,8 +195,9 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
               <h2 id="garage-picker-title" className="text-lg font-bold">Talleres disponibles</h2>
               <button type="button" onClick={() => setPickerOpen(false)} className="grid size-10 place-items-center rounded-md hover:bg-stone-100" aria-label="Cerrar"><X size={20} /></button>
             </div>
+            {searchBar && <div className="border-b border-stone-200 p-4">{searchBar}</div>}
             <ul className="divide-y divide-stone-100">
-              {[...frequent, ...garages.filter((item) => !frequent.includes(item))].map((item, index) => (<Fragment key={item.id}>
+              {[...frequent, ...searchable.filter((item) => !frequent.includes(item))].map((item, index) => (<Fragment key={item.id}>
                 {frequent.length > 0 && (index === 0 || index === frequent.length) && <li className="bg-stone-50 px-4 py-2 text-xs font-bold uppercase text-stone-500">{index === 0 ? "Mis talleres frecuentes" : "Otros talleres"}</li>}
                 <li key={item.id}>
                   <button type="button" onClick={() => chooseGarage(item.id)} className={`flex w-full items-start gap-3 p-4 text-left hover:bg-stone-50 ${item.id === garageId ? "bg-orange-50" : ""}`}>
@@ -162,7 +205,7 @@ export function AppointmentBooking({ garages, vehicles, lockedGarageId, defaultG
                     <span className="min-w-0">
                       <span className="block font-bold">{item.label}{item.id === garageId && <span className="ml-2 text-xs font-semibold text-[#d9341d]">Seleccionado</span>}</span>
                       {item.specialty && <span className="block text-sm font-semibold text-[#d9341d]">{item.specialty}</span>}
-                      {item.address && <span className="mt-0.5 flex items-start gap-1 text-sm text-stone-500"><MapPin size={14} className="mt-0.5 shrink-0" />{item.address}</span>}
+                      {item.address && <span className="mt-0.5 flex items-start gap-1 text-sm text-stone-500"><MapPin size={14} className="mt-0.5 shrink-0" />{[item.address, item.locationLabel].filter(Boolean).join(" · ")}</span>}
                     </span>
                   </button>
                 </li>

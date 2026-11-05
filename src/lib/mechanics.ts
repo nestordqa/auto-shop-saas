@@ -38,7 +38,9 @@ export function specialtyLabel(key: string, options: SpecialtyOption[] = DEFAULT
 /** Readable list stored in `garages.specialty` (shown on the booking page and lists). */
 export function specialtySummary(keys: readonly string[], options: SpecialtyOption[] = DEFAULT_SPECIALTY_OPTIONS) {
   const valid = options.filter((option) => keys.includes(option.key));
-  return (valid.length ? valid : [{ key: "general", label: specialtyLabel("general", options) }]).map((option) => option.label).join(" · ");
+  const summary = (valid.length ? valid : [{ key: "general", label: specialtyLabel("general", options) }]).map((option) => option.label).join(" · ");
+  // garages.specialty is limited to 120 chars; the full list lives in garages.specialties.
+  return summary.length <= 120 ? summary : `${summary.slice(0, 119).trimEnd()}…`;
 }
 
 /** Best-effort keys from a free-text specialty (prospects, older garages). */

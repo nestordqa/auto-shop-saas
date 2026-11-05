@@ -5,15 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { LocationFields } from "@/components/location/location-fields";
 import { SpecialtyPicker } from "@/components/garage/specialty-picker";
 import { PasswordInput } from "@/components/ui/password-input";
 import { TRIAL_DAYS } from "@/lib/contracts";
+import type { StateOption } from "@/lib/locations";
 import type { SpecialtyOption } from "@/lib/mechanics";
 
 const input = "min-h-12 w-full min-w-0 rounded-md border border-stone-300 px-4";
 
 /** Self sign-up of a garage: creates the owner account, the garage and its free trial right away. */
-export function GarageSignupForm({ specialties, coupon }: { specialties: SpecialtyOption[]; coupon?: string }) {
+export function GarageSignupForm({ specialties, states, coupon }: { specialties: SpecialtyOption[]; states: StateOption[]; coupon?: string }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
@@ -43,7 +45,8 @@ export function GarageSignupForm({ specialties, coupon }: { specialties: Special
       <fieldset className="grid gap-3">
         <legend className="mb-2 text-sm font-bold">Datos del taller</legend>
         <input name="name" required minLength={2} maxLength={120} placeholder="Nombre comercial" className={input} />
-        <textarea name="address" required minLength={5} maxLength={300} rows={2} placeholder="Dirección completa (con ciudad)" className="min-h-20 resize-none rounded-md border border-stone-300 p-4" />
+        <textarea name="address" required minLength={5} maxLength={300} rows={2} placeholder="Dirección (calle, sector, referencia)" className="min-h-20 resize-none rounded-md border border-stone-300 p-4" />
+        <LocationFields states={states} />
         <input name="mapLocation" maxLength={500} placeholder="Enlace de Google Maps (opcional)" className={input} />
         <SpecialtyPicker options={specialties} defaultValue={["general"]} />
         <div className="grid gap-2 rounded-md border border-dashed border-stone-300 p-3">

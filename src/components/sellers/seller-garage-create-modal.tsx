@@ -4,9 +4,11 @@ import { Building2, CheckCircle2, LoaderCircle, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { LocationFields } from "@/components/location/location-fields";
 import { SpecialtyPicker } from "@/components/garage/specialty-picker";
 import { PasswordInput } from "@/components/ui/password-input";
 import { TRIAL_DAYS } from "@/lib/contracts";
+import type { StateOption } from "@/lib/locations";
 import { specialtyKeysFrom, type SpecialtyOption } from "@/lib/mechanics";
 
 const input = "min-h-12 w-full min-w-0 rounded-md border border-stone-300 px-4";
@@ -14,7 +16,7 @@ const input = "min-h-12 w-full min-w-0 rounded-md border border-stone-300 px-4";
 export type SellerProspectOption = { id: string; name: string; contactName: string | null; phone: string | null; email: string | null; address: string | null; mapLocation: string | null; specialty: string | null; city: string | null };
 
 /** A seller creates a garage (always with the free trial); it is attributed to them and admins are notified. */
-export function SellerGarageCreateModal({ specialties, prospects }: { specialties: SpecialtyOption[]; prospects: SellerProspectOption[] }) {
+export function SellerGarageCreateModal({ specialties, prospects, states }: { specialties: SpecialtyOption[]; prospects: SellerProspectOption[]; states: StateOption[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -63,6 +65,7 @@ export function SellerGarageCreateModal({ specialties, prospects }: { specialtie
                 <legend className="mb-2 text-sm font-bold">Datos del taller</legend>
                 <input name="name" required minLength={2} maxLength={120} defaultValue={prospect?.name} placeholder="Nombre comercial" className={input} />
                 <textarea name="address" required minLength={5} maxLength={300} rows={2} defaultValue={prospect ? [prospect.address, prospect.city].filter(Boolean).join(", ") : undefined} placeholder="Dirección completa" className="min-h-20 resize-none rounded-md border border-stone-300 p-4" />
+                <LocationFields states={states} />
                 <input name="mapLocation" maxLength={500} defaultValue={prospect?.mapLocation ?? ""} placeholder="Enlace de Google Maps (opcional)" className={input} />
                 <SpecialtyPicker options={specialties} defaultValue={specialtyKeysFrom(prospect?.specialty, specialties)} />
                 <div className="grid gap-2 sm:grid-cols-2"><input name="legalName" maxLength={160} placeholder="Razón social (opcional)" className={input} /><input name="legalId" maxLength={30} placeholder="RIF (opcional)" className={`${input} uppercase`} /></div>

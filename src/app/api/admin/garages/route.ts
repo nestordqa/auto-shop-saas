@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   let ownerId: string;
   let createdOwner = false;
   if (input.ownerMode === "new") {
-    const owner = await createOwnerAccount(admin, { ...input, password: input.temporaryPassword });
+    const owner = await createOwnerAccount(admin, { ...input, password: input.temporaryPassword, welcome: true });
     if ("error" in owner) return NextResponse.json({ error: owner.error }, { status: 400 });
     ownerId = owner.id;
     createdOwner = true;

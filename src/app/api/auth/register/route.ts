@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { hasNoAppAccess } from "@/lib/client-accounts";
+import { locationFieldsSchema } from "@/lib/locations";
+import { resolveLocation } from "@/lib/locations-data";
 import { phoneSchema } from "@/lib/phone";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { TERMS_VERSION } from "@/lib/terms";
 
-const registerSchema = z.object({ fullName: z.string().trim().min(2).max(120), email: z.email(), phone: phoneSchema, documentId: z.string().trim().min(4).max(30), password: z.string().min(8).max(72), acceptTerms: z.literal("on"), nextPath: z.string().optional() });
+const registerSchema = z.object({ fullName: z.string().trim().min(2).max(120), email: z.email(), phone: phoneSchema, documentId: z.string().trim().min(4).max(30), password: z.string().min(8).max(72), acceptTerms: z.literal("on"), nextPath: z.string().optional() }).extend(locationFieldsSchema.shape);
 
 export async function POST(request: Request) {
   const parsed = registerSchema.safeParse(await request.json().catch(() => null));
@@ -15,7 +17,9 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "El registro no está configurado." }, { status: 503 });
   const input = parsed.data;
-  const profile = { full_name: input.fullName, phone: input.phone, document_id: input.documentId, role: "client" as const, terms_accepted_at: new Date().toISOString(), terms_version: TERMS_VERSION };
+  const location = await resolveLocation(admin, input);
+  if ("error" in location) return NextResponse.json({ error: location.error }, { status: 400 });
+  const profile = { ...location, full_name: input.fullName, phone: input.phone, document_id: input.documentId, role: "client" as const, terms_accepted_at: new Date().toISOString(), terms_version: TERMS_VERSION };
 
   // A garage may have registered this client without email: same phone and cédula → activate that
   // account (keeps vehicles and history) instead of creating a duplicate.

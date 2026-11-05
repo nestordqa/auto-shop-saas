@@ -8,6 +8,7 @@ import { GarageAffiliationForm } from "@/components/auth/garage-affiliation-form
 import { GarageSignupForm } from "@/components/auth/garage-signup-form";
 import { RegisterForm } from "@/components/auth/register-form";
 import { SupportButton } from "@/components/layout/support-button";
+import { getLocationOptions } from "@/lib/locations-data";
 import { getSpecialties } from "@/lib/specialties-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -28,7 +29,12 @@ export const metadata: Metadata = {
 export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ next?: string; tipo?: string; cupon?: string }> }) {
   const { next, tipo, cupon } = await searchParams;
   const mode = tipo === "afiliacion" ? "affiliation" : tipo === "taller" || cupon ? "garage" : tipo === "cliente" || next ? "client" : "choose";
-  const specialties = mode === "garage" ? (await getSpecialties(createAdminClient())).map(({ key, label }) => ({ key, label })) : [];
+  const admin = createAdminClient();
+  const [specialtyRows, states] = await Promise.all([
+    mode === "garage" ? getSpecialties(admin) : Promise.resolve([]),
+    mode === "garage" || mode === "client" ? getLocationOptions(admin) : Promise.resolve([]),
+  ]);
+  const specialties = specialtyRows.map(({ key, label }) => ({ key, label }));
   const back = <Link href={`/register${next ? `?next=${encodeURIComponent(next)}` : ""}`} className="mb-4 inline-flex items-center gap-1 text-sm font-bold text-stone-600 hover:text-stone-900"><ArrowLeft size={16} /> Volver</Link>;
 
   const card = mode === "garage" ? (
@@ -37,7 +43,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
       <p className="text-xs font-bold uppercase text-[#d9341d]">Para talleres</p>
       <h2 className="mt-2 font-display text-4xl font-bold">Registra tu taller</h2>
       <p className="mt-2 text-sm leading-6 text-stone-600">Crea tu cuenta y empieza hoy con 30 días de prueba gratis. ¿Prefieres que lo hagamos por ti? <Link href="/register?tipo=afiliacion" className="font-bold text-[#d9341d] hover:underline">Escríbenos por WhatsApp</Link>.</p>
-      <GarageSignupForm specialties={specialties} coupon={cupon?.slice(0, 30)} />
+      <GarageSignupForm specialties={specialties} states={states} coupon={cupon?.slice(0, 30)} />
     </>
   ) : mode === "affiliation" ? (
     <>
@@ -53,7 +59,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
       <p className="text-xs font-bold uppercase text-[#d9341d]">Portal del cliente</p>
       <h2 className="mt-2 font-display text-4xl font-bold">Crea tu cuenta</h2>
       <p className="mt-2 text-sm leading-6 text-stone-600">Registra tus vehículos, agenda citas y decide tus presupuestos.</p>
-      <RegisterForm nextPath={next} />
+      <RegisterForm nextPath={next} states={states} />
     </>
   ) : (
     <>

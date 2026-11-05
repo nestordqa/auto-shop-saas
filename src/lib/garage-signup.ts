@@ -9,6 +9,8 @@ import { specialtySummary } from "@/lib/mechanics";
 import { phoneSchema } from "@/lib/phone";
 import { PLAN_KEYS, type PlanKey } from "@/lib/plans";
 import { toUrlSlug } from "@/lib/slugs";
+import { locationFieldsSchema } from "@/lib/locations";
+import { resolveLocation } from "@/lib/locations-data";
 import { validSpecialtyKeys } from "@/lib/specialties-data";
 import { TERMS_VERSION } from "@/lib/terms";
 
@@ -22,7 +24,7 @@ export const garageFieldsSchema = z.object({
   specialties: z.array(z.string().regex(/^[a-z0-9_]+$/).max(60)).max(40).default(["general"]),
   legalName: z.string().trim().max(160).optional(),
   legalId: z.string().trim().max(30).optional(),
-});
+}).extend(locationFieldsSchema.shape);
 
 /** A brand-new owner account. */
 export const newOwnerSchema = z.object({
@@ -35,7 +37,8 @@ export const newOwnerSchema = z.object({
 export const startSchema = z.enum(["trial", ...PLAN_KEYS]).default("trial");
 
 type GarageFields = z.infer<typeof garageFieldsSchema>;
-type NewOwner = z.infer<typeof newOwnerSchema> & { password: string; acceptedTerms?: boolean };
+/** `welcome`: the account was created for them (admin / seller), so their first sign-in shows the welcome modal. */
+type NewOwner = z.infer<typeof newOwnerSchema> & { password: string; acceptedTerms?: boolean; welcome?: boolean };
 
 export type CreatedGarage = { id: string; name: string; slug: string; ownerPhone: string | null; contractId: string | null; trialEnds: string | null };
 
@@ -58,7 +61,7 @@ export async function createOwnerAccount(admin: SupabaseClient, owner: NewOwner)
     password: owner.password,
     email_confirm: true,
     app_metadata: { role: "garage_owner" },
-    user_metadata: { full_name: owner.ownerName, phone: owner.ownerPhone },
+    user_metadata: { full_name: owner.ownerName, phone: owner.ownerPhone, ...(owner.welcome && { show_welcome: true }) },
   });
   if (error || !data.user) {
     const exists = error && (error.code === "email_exists" || /already|registered/i.test(error.message));
@@ -93,6 +96,8 @@ export async function insertGarage(admin: SupabaseClient, input: {
   prospectId?: string | null;
 }): Promise<{ garage: CreatedGarage } | { error: string; status: number }> {
   const { fields } = input;
+  const location = await resolveLocation(admin, fields, input.createdBy);
+  if ("error" in location) return { error: location.error, status: 400 };
   const specialties = await validSpecialtyKeys(admin, fields.specialties);
   const baseSlug = toUrlSlug(fields.name);
   const { data: matchingSlugs } = await admin.from("garages").select("slug").like("slug", `${baseSlug}%`);
@@ -112,10 +117,12 @@ export async function insertGarage(admin: SupabaseClient, input: {
     specialties: specialties.keys.length ? specialties.keys : ["general"],
     plan: input.start === "trial" ? null : input.start,
     owner_id: input.ownerId,
+    ...location,
     signup_source: input.source,
     seller_id: input.sellerId ?? null,
     coupon_code: input.couponCode ?? null,
   }).select("id").single();
+  if (error) console.error("insertGarage failed", error);
   if (error || !garage) return { error: error?.code === "23505" ? "Ese administrador ya tiene un taller." : "No se pudo crear el taller.", status: 409 };
 
   // Created from a prospect: close it as won and link it to the new garage.

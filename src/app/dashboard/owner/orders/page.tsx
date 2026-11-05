@@ -11,6 +11,7 @@ import {
   specialtyLabel,
 } from "@/lib/mechanics";
 import { compareOrdersForWork, getOpenOrdersByVehicle } from "@/lib/order-status";
+import { getGarageClients } from "@/lib/locations-data";
 import { getOwnerOrders } from "@/lib/owner-orders";
 import { ORDER_STATUSES, ORDER_STATUS_LABELS } from "@/types/domain";
 
@@ -30,7 +31,7 @@ export default async function OwnerOrdersPage({
     { rows },
     { data: vehicles },
     { data: mechanicRows },
-    { data: clients },
+    clients,
     { data: brands },
     { data: models },
     openOrders,
@@ -45,11 +46,7 @@ export default async function OwnerOrdersPage({
       .select("id, profile_id, specialty, branch_id")
       .eq("garage_id", garage.id)
       .eq("is_active", true),
-    dataClient
-      .from("profiles")
-      .select("id, full_name, document_id, phone")
-      .eq("role", "client")
-      .order("full_name"),
+    getGarageClients(dataClient, garage.id),
     dataClient.from("vehicle_brands").select("id, name").eq("is_active", true),
     dataClient
       .from("vehicle_models")

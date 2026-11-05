@@ -107,7 +107,9 @@ export async function POST(request: Request) {
     }
     clientId = authData.user.id;
     createdClient = true;
-    const { error: profileError } = await admin.from("profiles").update({ full_name: input.client.fullName, phone: input.client.phone, document_id: input.client.documentId || null, role: "client" }).eq("id", clientId).select("id").single();
+    // A client registered by the garage starts in the garage's state and city (they can change it in Configuración).
+    const { data: garageLocation } = await admin.from("garages").select("country_code, state_id, city_id").eq("id", garage.id).maybeSingle();
+    const { error: profileError } = await admin.from("profiles").update({ ...(garageLocation ?? {}), full_name: input.client.fullName, phone: input.client.phone, document_id: input.client.documentId || null, role: "client" }).eq("id", clientId).select("id").single();
     if (profileError) {
       await admin.auth.admin.deleteUser(clientId);
       if (profileError.code === "23505") return NextResponse.json({ error: "Ya existe un cliente con esa cédula o teléfono. Búscalo en «Buscar cliente»." }, { status: 409 });
